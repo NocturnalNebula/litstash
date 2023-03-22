@@ -2,7 +2,7 @@
 
 DESCRIPTION
 -----------
-Welcome to Literotica Downloader (lit-dl v.1.0), a Python3 tool for downloading stories from Literotica. This command line program will download stories in HTML format from literotica.com and from the "classic" Literotica format accessed through the Wayback Machine. However, very old Wayback Machine captures from before Literotica's site format change around 2012 will cause lit-dl to crash.
+Welcome to Literotica Downloader (lit-dl v.1.1), a Python3 tool for downloading stories from Literotica. This command line program will download stories in HTML format from literotica.com and from the "classic" Literotica format accessed through the Wayback Machine. However, very old Wayback Machine captures from before Literotica's site format change around 2012 will cause lit-dl to crash.
 
 This program was written in January 2023 as an alternative to other Literotica downloaders which stopped working after Lit changed the format of the site several years ago. As of the time of this writing, lit-dl works nicely with the current format of Literotica.
 
@@ -48,4 +48,4 @@ Created by NocturnalNebula in Jan 2023 : nocturnalnebula@proton.me
 
 GNU GPLv3.0-or-later
 
-Updated: Jan 2023
+Updated: March 2023
