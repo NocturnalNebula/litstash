@@ -32,9 +32,9 @@
 #			**************************************************
 
 #			Literotica Downloader (lit-dl)
-#			Version 1.0
+#			Version 1.1
 #			Requires: Python 3.x
-#			Updated: January 2023
+#			Updated: March 2023
 
 #	Welcome to Literotica Downloader (lit-dl v.1.0), a Python3 tool for downloading stories from Literotica. This command line program will download stories in HTML format from literotica.com and from the "classic" Literotica format accessed through the Wayback Machine. However, very old Wayback Machine captures from before Literotica's site format change around 2012 will cause lit-dl to crash.
 
@@ -147,7 +147,7 @@ def download_lit_story(url):
 
 	#get story title to use in header and filename
 	print('Finding story title...')
-	title = str(url.split('/')[-1])
+	title = url.split('/')[-1].title().replace('-', ' ')
 
 	# loop through and save each page of the story
 	while page_num <= pages:
@@ -188,7 +188,7 @@ def download_lit_story(url):
 		page_num += 1
 
 	# create header with story title and username
-	header = '<h3>' + title.title().replace('-', ' ') + '</h3><p>' + username + '</p><p>' + url + '</p><p>--------------</p>'
+	header = '<h3>' + title + '</h3><p>' + username + '</p><p>' + url + '</p><p>--------------</p>'
 
 	# export story text to html and finish
 	export_to_html(text, title, header)
@@ -207,7 +207,7 @@ def download_wb_story(url):
 
 	# extract story title from URL for filename and header
 	print('Finding story title...')
-	title = url.split('/')[-1]
+	title = url.split('/')[-1].title().replace('-', ' ')
 	
 	# loop through each page of the story
 	while page_num <= pages:
@@ -257,7 +257,7 @@ def download_wb_story(url):
 		page_num += 1
 	
 	# create header with story title and username
-	header = '<h3>' + title.title().replace('-', ' ') + '</h3><p>' + username + '</p><p>' + url + '</p><p>--------------</p>'
+	header = '<h3>' + title + '</h3><p>' + username + '</p><p>' + url + '</p><p>--------------</p>'
 
 	# export story text to html and finish
 	export_to_html(text, title, header)
@@ -331,7 +331,7 @@ def download_all_stories(stories, start):
 # function to export story to html
 def export_to_html(text, title, header):
 	print('Exporting HTML file...')
-	open(title + '.html', mode='w').write('<html>' + header + text + '</html>')
+	open(title + '.html', mode='w').write('<html><head><title>' + title + '</title></head><body>' + header + text + '</body></html>')
 	print('Finished downloading and exporting ' + title + '.html')
 	return None
 	
@@ -360,8 +360,8 @@ def main_menu():
 	**************************************************
 	
 	Literotica Downloader (lit-dl)
-	Version 1.0
-	Updated: January 2023
+	Version 1.1
+	Updated: March 2023
 	
 	MAIN MENU
 	---------
@@ -412,9 +412,9 @@ def main_menu():
 	------------
 	
 Literotica Downloader (lit-dl)
-Version 1.0
+Version 1.1
 Requires: Python 3.x
-Updated: January 2023
+Updated: March 2023
 
 Welcome to Literotica Downloader (lit-dl v.1.0), a Python3 tool for 
 downloading stories from Literotica. This command line program will 
