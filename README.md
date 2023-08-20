@@ -1,51 +1,58 @@
-# Literotica Downloader (lit-dl)
+# lit-dl (Literotica Downloader)
 
-DESCRIPTION
------------
-Welcome to Literotica Downloader (lit-dl v.1.1), a Python3 tool for downloading stories from Literotica. This command line program will download stories in HTML format from literotica.com and from the "classic" Literotica format accessed through the Wayback Machine. However, very old Wayback Machine captures from before Literotica's site format change around 2012 will cause lit-dl to crash.
+### README
+* lit-dl-v1.2
+* Compatibility: Windows, Mac, Linux, others
+* Created by NocturnalNebula in Jan 2023 <nocturnalnebula@proton.me>
+* GNU GPLv3.0-or-later
+* Updated: August 2023
 
-This program was written in January 2023 as an alternative to other Literotica downloaders which stopped working after Lit changed the format of the site several years ago. As of the time of this writing, lit-dl works nicely with the current format of Literotica.
+---
 
-It is capable of downloading individual stories or batch downloading all the story submissions from a particular user. The exported HTML files retain paragraph, linebreak, bold, italics, and other style tags and look nice on an e-reader. Parsing the HTML to TXT exports would remove these stylistic elements, however, it could be easily done by copy/pasting out of a web browser into a text editor. 
+### DESCRIPTION
+
+Welcome to lit-dl (Literotica Downloader), a tool for downloading stories from Literotica. This program will download stories in HTML format from literotica.com and from the "classic" Literotica format accessed through the Wayback Machine. However, very old Wayback Machine captures from before Literotica's site format change around 2012 will cause lit-dl to crash.
+
+This program was originally written in python3 in January 2023 as an alternative to other Literotica downloaders which stopped working after the site changed its format several years ago.
+
+It is capable of downloading individual stories or batch downloading all the story submissions from a particular user. The exported HTML files retain paragraph, linebreak, bold, italics, and other style tags and look nice on an e-reader. Parsing the HTML to TXT exports would remove these stylistic elements, however, it could be easily done by copy/pasting out of a web browser into a text editor.
 
 This program was created as a fun coding project and because it is much nicer to enjoy these stories on the reading device of our choosing rather than page-by-page in a web browser.
 
-Enjoy.
+---
 
-INSTALLING / RUNNING THE PROGRAM
---------------------------------
+### INSTALLING / USING THE PROGRAM
 
-1) Navigate your command line to the same directory where lit-dl.py is located and run it with: 'python3 lit-dl.py'
-2) Make a selection from the main menu
-3) Paste literotica.com URLs and let the lit-dl do the rest
-4) Stories will be exported in HTML format to the same directory as lit-dl.py
+There are two ways to use this program.
+1) Simply execute the python3 script in a terminal.
+2) On linux, install lit-dl.deb (DEB package containing a binary of the program).
 
-TROUBLESHOOTING
----------------
+#### RUNNING THE SCRIPT
 
-If the program is not working as expected you should first check a few things.
+1) With python3 installed, navigate your command line to the same directory where lit-dl.py is located and run it with:
 
-1) Ensure that python3 is installed
+>python3 lit-dl.py
 
-Windows: https://www.python.org/downloads/windows/
+Or, if python3 is the only version you have installed:
 
-MacOS: https://www.python.org/downloads/macos/
+>python lit-dl.py
 
-Linux (Ubuntu Family): Type "sudo apt-get install python3" into the command line. 
+2) Make a selection from the main menu.
+3) Paste literotica.com URLs and let the lit-dl do the rest.
+4) Stories will be exported in HTML format to the current working directory, which can be changed from the main menu.
 
-Linux (Other): If you are using non-Ubuntu Linux I think it is safe to assume you can figure out how to install python3 on your own.
+---
 
-2) If you are seeing errors about urllib such as "NameError: name 'urllib' is not defined" you might need to install urllib, although this should not be necessary as urllib is a standard library
+### TROUBLESHOOTING
 
-Try reinstalling python3 first then try 'pip install urllib' to install urllib. You will probably need to install pip first, as well.
+A few things to fix various problems:
+* Ensure that python3 is installed.
+* If you are seeing errors about urllib, such as, *NameError: name 'urllib' is not defined*, you might need to install urllib, although this should not be necessary as urllib is a standard library. Try reinstalling python3, and if you have pip installed, use:
 
-3) It may be necessary that you have execute permissions on lit-dl.py
+> pip install urllib
 
-INFO
-----
+* It may be necessary that you have execute permissions on lit-dl.py
 
-Created by NocturnalNebula in Jan 2023 : nocturnalnebula@proton.me
+> sudo chmod +x lit-dl.py
 
-GNU GPLv3.0-or-later
-
-Updated: March 2023
+* lit-dl might seem to download very slowly and get stuck on various steps  (especially from the Wayback Machine) because it needs to scrape source data from the website. Just wait. If it gets a timeout error, it will tell you and retry three times.
