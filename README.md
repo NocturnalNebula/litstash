@@ -25,7 +25,7 @@ This program was created as a fun coding project and because it is much nicer to
 
 There are two ways to use this program.
 1) Simply execute the python3 script in a terminal.
-2) On linux, install lit-dl.deb (DEB package containing a binary of the program).
+2) On linux, install lit-dl.deb (DEB package containing a binary of the program). See the latest release to find DEB package at https://github.com/NocturnalNebula/lit-dl/releases/.
 
 #### RUNNING THE SCRIPT
 
