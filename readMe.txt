@@ -56,7 +56,7 @@ EXAMPLE COMMANDS:
 
 > python litstash.py --version
 > python litstash.py --help
-> python litstash.py https://www.literotica.com/s/your-smutty-story-34
+> python litstash.py https://www.literotica.com/s/your-smutty-story-34 https://www.literotica.com/p/a-poem-11
 > python litstash.py "https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
 > python litstash.py "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
 > python litstash.py "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
