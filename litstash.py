@@ -758,7 +758,7 @@ def export(path,filename,output):
     os.chdir(path)
 
     # output the extracted submission
-    f = open(filename, 'w')
+    f = open(filename, 'w', encoding='utf-8')
     f.write(output)
     f.close()
 
