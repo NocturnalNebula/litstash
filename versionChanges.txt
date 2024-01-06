@@ -1,4 +1,13 @@
 
+1.4 - December 2023
+'''''''''''''''''''
+- outputs now include story metadata (author, date, tags, series, etc...)
+- created auto-download-all flag '-a' for batch downloads
+- added support for xnxx stories (including author pages and Wayback Machine)
+- output path is now '.../litstash-saves/username/___.html'
+- cleaned up output during downloading
+- unknown upload dates default to '0000-00-00'
+
 1.3 - September 2023
 ''''''''''''''''''''
 - complete program re-rewrite (now using classes rather than just functions)

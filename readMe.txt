@@ -1,5 +1,4 @@
 
-
         LITSTASH  --  readMe
         --------------------------
         Created by NocturnalNebula
@@ -12,11 +11,14 @@
 DESCRIPTION
 '''''''''''
 
-This python script can download any submission from Literotica or from Wayback 
-Machine captures of submissions. Submissions are saved in HTML format with 
-embedded images, audios, and style tags preserved. This program can download 
-batches of submissions from author pages, favorite pages, search results, or 
-any other page containing Literotica URLs (or Wayback Machine captures).
+This python script can download submissions from Literotica and stories from
+xnxx. It also supports Wayback Machine captures from either site. Submissions 
+are saved in HTML format with embedded images, audios, and style tags preserved. 
+Additionally, litstash can download batches of submissions from author pages, 
+favorite pages, search results, or any other page containing submission URLs.
+
+Outputs include story metadata (author, series, date, etc...) for easy
+organization or conversion to epub in an ebook manager.
 
 REQUIREMENTS
 ''''''''''''
@@ -48,9 +50,10 @@ In a terminal, clone the repository, enter it and run the script with:
 You may need to type 'python3' instead of 'python' if you have multiple 
 versions of Python installed. Literotica URLs should be surrounded by 
 "quotes" because an '&' can confuse the shell. You can include multiple 
-URLs. URLs can be any Literotica submissions, Wayback Machine captures of 
-submissions, or any page containing links to submissions (or captures). 
-Submissions will be exported to ".../lit-submissions/username/submission.html".
+URLs. URLs can be any Literotica submission or xnxx stories, any page containing
+links to either of the above (e.g. author pages), or Wayback Machine captures 
+of any of the above. Submissions will be exported to 
+".../litstash-saves/username/___.html".
 
 EXAMPLE COMMANDS:
 
