@@ -31,6 +31,7 @@ import sys
 import time
 import json
 import traceback
+import re
 
 # initialize global variables
 origCwd = os.getcwd()
@@ -875,7 +876,7 @@ def export(path,filename,output):
     os.chdir(path)
 
     # output the extracted submission
-    f = open(filename, 'w')
+    f = open(re.sub(r'[<>:"/\\|?*]', '-', filename), 'w', encoding='utf-8')
     f.write(output)
     f.close()
 
