@@ -35,8 +35,8 @@ import traceback
 # initialize global variables
 origCwd = os.getcwd()
 downloadList = []
-version = 'Version: 1.4'
-updated = 'Updated: December 2023'
+version = 'Version: 1.5'
+updated = 'Updated: Feb 2024'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -153,10 +153,10 @@ class literotica:
                 self.date = ('-').join([date[2],date[0],date[1]])
 
                 # ensure title is a string (default will be int if only digits)
-                self.title = str(self.apiData['submission']['title']).replace('/','|')
+                self.title = str(self.apiData['submission']['title']).replace('/','-')
 
-                self.username = self.apiData['submission']['authorname']
-                self.description = self.apiData['submission']['description']
+                self.username = str(self.apiData['submission']['authorname'])
+                self.description = str(self.apiData['submission']['description'])
                 self.category = getCategory(self.apiData['submission']['category_info']['pageUrl'])
 
                 # get series data only if it exists
@@ -343,7 +343,7 @@ class waybackMachineLit:
         if self.currentPage == 1:
 
             self.title = sandwichMaker(self.pageSource, '<h1 class="j_bm headline j_eQ">', '<')
-            self.title = self.title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','|')
+            self.title = self.title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','-')
 
             if '/s/' in self.url:
                 if self.pageSource.count(f"literotica.com/s/{self.slug}?page=") > 0:
@@ -383,7 +383,7 @@ class waybackMachineLit:
         if self.currentPage == 1:
 
             title = sandwichMaker(self.pageSource,'<h1>','</h1>')
-            self.title = title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','|')
+            self.title = title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','-')
 
             self.pages = int(sandwichMaker(self.pageSource,'<!-- x -->',' Pages'))
             self.username = sandwichMaker(self.pageSource,'page=submissions">','</a>')
@@ -402,7 +402,7 @@ class waybackMachineLit:
         if self.currentPage == 1:
 
             title = sandwichMaker(self.pageSource,'<h1>','</h1>')
-            self.title = title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','|')
+            self.title = title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','-')
 
             self.pages = int(sandwichMaker(self.pageSource,'"b-pager-caption">',' Pages'))
             self.username = sandwichMaker(self.pageSource,'page=submissions">','</a>')
@@ -421,7 +421,7 @@ class waybackMachineLit:
         if self.currentPage == 1:
 
             self.title = sandwichMaker(self.pageSource,'<h1>','</h1>')
-            self.title = self.title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','|')
+            self.title = self.title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','-')
             print('Title: ' + self.title)
 
             self.pages = self.pageSource.count(self.slug + '&amp;page=')
@@ -442,7 +442,7 @@ class waybackMachineLit:
         if self.currentPage == 1:
 
             self.title = sandwichMaker(self.pageSource,'Helvetica"><strong>','<')
-            self.title = self.title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','|')
+            self.title = self.title.replace('&quot;','"').replace('&#x27;',"'").replace('&amp;','&').replace('/','-')
             print('Title: ' + self.title)
 
             self.pages = self.pageSource.count(self.slug + '&amp;page=')
@@ -875,7 +875,7 @@ def export(path,filename,output):
     os.chdir(path)
 
     # output the extracted submission
-    f = open(filename, 'w')
+    f = open(filename, 'w', encoding='utf-8')
     f.write(output)
     f.close()
 
@@ -926,7 +926,9 @@ def getFilename(date, title):
     title = title.replace('.','').replace(' ','-')
     # remove puncuation marks from title
     title = title.replace('---','-').replace('--','-').replace(',','').replace('!','').replace('?','')
-    title = title.replace(':','').replace(';','').replace("'",'').replace('"','')
+    title = title.replace(':','').replace(';','').replace("'",'').replace('"','').replace('|','')
+    title = title.replace('[','').replace(']','').replace("<",'').replace('>','').replace('*','')
+    title = title.replace('/','-').replace('\\','-')
     return f"{date}_{title}.html"
 
 def saveFile(fileUrl, fileName, savePath, attempts=0):
@@ -1235,7 +1237,7 @@ def getList():
                 skippedCount += 1
             if finished == 1:
                 savedCount += 1
-                print(f"[Completed {savedCount} of {len(selectionList)} Submissions ({skippedCount} Skipped)]")
+                print(f"[Completed]   {savedCount} of {len(selectionList)} Submissions ({skippedCount} Skipped)")
         raise SystemExit
 
     if '-' in selection:
@@ -1246,7 +1248,7 @@ def getList():
                 skippedCount += 1
             if finished == 1:
                 savedCount += 1
-                print(f"[Completed {savedCount} of {int(numbers[1])-int(numbers[0])+1} Submissions ({skippedCount} Skipped)]")
+                print(f"[Completed]   {savedCount} of {int(numbers[1])-int(numbers[0])+1} Submissions ({skippedCount} Skipped)")
         raise SystemExit
 
     if selection.isdigit():

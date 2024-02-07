@@ -1,4 +1,8 @@
 
+1.5 - February 2024
+'''''''''''''''''''
+- fix various bugs (illegal characters in filenames, stories containing emojies, numbers for usernames)
+
 1.4 - December 2023
 '''''''''''''''''''
 - outputs now include story metadata (author, date, tags, series, etc...)
