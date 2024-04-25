@@ -1,3 +1,7 @@
+1.6 - April 2024
+''''''''''''''''
+- fix various bugs introduced by Literotica's author page format change
+- update help page to explain work-around to author batch downloading
 
 1.5 - February 2024
 '''''''''''''''''''

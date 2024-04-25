@@ -35,8 +35,8 @@ import traceback
 # initialize global variables
 origCwd = os.getcwd()
 downloadList = []
-version = 'Version: 1.5'
-updated = 'Updated: Feb 2024'
+version = 'Version: 1.6'
+updated = 'Updated: April 2024'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -60,19 +60,36 @@ URL:
     - URLs are any of the following:
         - Literotica submission (story, poem, audio, illustration) 
         - xnxx story (sexstories.com)
-        - any page containing links to either of the above (e.g. author pages)
+        - any page containing links to either of the above (e.g. series pages)
+            NOTE: Literotica author pages no longer support batch downloading (as of April 2024)
+                  See below for more info and work-around
         - Wayback Machine capture of any of the above
     - multiple URLs can be included
 
-examples: (replace 'litstash' with 'python litstash.py' if running with Python)
-    litstash --version
-    litstash https://www.literotica.com/s/an-erotic-story-9 https://www.literotica.com/p/a-smutty-poem-8
-    litstash "https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
-    litstash "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
-    litstash -a "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
+examples:
+    python litstash.py --version
+    python litstash.py https://www.literotica.com/s/an-erotic-story-9 https://www.literotica.com/p/a-smutty-poem-8
+    python litstash.py https://www.literotica.com/series/se/00000
+    python litstash.py "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
+    python litstash.py -a "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
 
 more:
     - downloads will be saved in 'litstash-saves' created in the current working directory
+    - visit https://github.com/NocturnalNebula/litstash/releases to check for new versions
+
+note on batch downloading from author pages:
+    Literotica auther pages (of the URL format "literotica.com/authors/...") are 
+    no longer supported due to a site format change in April 2024 which broke the 
+    functionality of litstash. However, "Series" pages ("literotica.com/series/...")
+    should still work fine.
+
+    A work-around is to find a Wayback Machine capture of the author page in question
+    and batch download all the stories from there. Search web.archive.org with a URL
+    of one of the author's stories, then navigate to their author page from the archived story.
+    Paste the URL of their archived author page to batch download all of their submissions.
+
+    Include "quotes" around the URL when you paste it. For example:
+    > python litstash.py "URL"
 '''
 
 # CLASSES
@@ -1199,7 +1216,7 @@ def getList():
         print('No submissions detected. Quitting...')
         raise SystemExit
 
-    print(f"Detected {len(downloadList)} submission(s) in total")
+    print(f"Detected {len(downloadList)} unique submission(s) in total")
 
     if len(downloadList) == 1: # automatically download single stories
         getSubmission(downloadList[0])
@@ -1259,7 +1276,16 @@ def scanForUrls(url):
     # scan any webpage for literotica or xnxx submissions
 
     print('Scanning given page for Submissions... ', end='')
-
+    
+    # skip modern literotica author pages (works and favorites)
+    if "literotica.com/authors/" in url:
+        print('''
+\nNote: As of April 2024, author pages are no longer supported.
+      See help page for more information.
+      > python litstash.py --help
+        ''')
+        return 0
+        
     xnxxStoryCount = 0
     storyCount = 0
     originalStoryCount = 0
@@ -1308,8 +1334,13 @@ def scanForUrls(url):
 
         url = cleanUrl(pageSource[beg:end])
 
-        if url not in downloadList:
-            downloadList.append(url)
+        # do not confuse a link to the general story category with a submission
+        if url.endswith('/s/'):
+            totalStories -= 1
+            storyCount -= 1
+        else:
+            if url not in downloadList:
+                downloadList.append(url)
 
         storyCount += 1
 
@@ -1346,8 +1377,13 @@ def scanForUrls(url):
 
         url = cleanUrl(pageSource[beg:end])
 
-        if url not in downloadList:
-            downloadList.append(url)
+        # do not confuse a link to the illustration category with a submission
+        if url.endswith('/i/'):
+            totalIllustrations -= 1
+            illustrationCount -= 1
+        else:
+            if url not in downloadList:
+                downloadList.append(url)
 
         illustrationCount += 1
 
@@ -1364,9 +1400,14 @@ def scanForUrls(url):
         end = i
 
         url = cleanUrl(pageSource[beg:end])
-
-        if url not in downloadList:
-            downloadList.append(url)
+        
+        # do not confuse a link to the poetry category with a submission
+        if url.endswith('/p/'):
+            totalPoems -= 1
+            poemCount -= 1
+        else:
+            if url not in downloadList:
+                downloadList.append(url)
 
         poemCount += 1
 

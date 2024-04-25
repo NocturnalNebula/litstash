@@ -14,11 +14,14 @@ DESCRIPTION
 This python script can download submissions from Literotica and stories from
 xnxx. It also supports Wayback Machine captures from either site. Submissions 
 are saved in HTML format with embedded images, audios, and style tags preserved. 
-Additionally, litstash can download batches of submissions from author pages, 
-favorite pages, search results, or any other page containing submission URLs.
+
+Additionally, litstash can download batches of submissions from series pages, 
+search results, or any other page containing submission URLs. Unfortunately,
+author pages are not supported, neither 'Works' nor 'Favorites', because
+submission URLs are not hardcoded into the page source.
 
 Outputs include story metadata (author, series, date, etc...) for easy
-organization or conversion to epub in an ebook manager.
+organization or conversion to EPUB in an ebook manager such as Calibre.
 
 REQUIREMENTS
 ''''''''''''
@@ -60,7 +63,7 @@ EXAMPLE COMMANDS:
 > python litstash.py --version
 > python litstash.py --help
 > python litstash.py https://www.literotica.com/s/your-smutty-story-34 https://www.literotica.com/p/a-poem-11
-> python litstash.py "https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
+> python litstash.py https://www.literotica.com/series/se/00000
 > python litstash.py "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
 > python litstash.py "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
 
@@ -117,6 +120,8 @@ TROUBLESHOOTING
 * Did you put quotes around URLs? URLs with '&'s in them require quotes.
 
 * Is the latest version of Python installed?
+
+* Are you using the latest version of litstash?
 
 * If you have multiple versions of Python installed on your system, use:
 > python3 litstash.py --help
@@ -175,7 +180,7 @@ Classic       -  2014-2021/04
 Modern        -  2021/04-present
 
 COMMENTS, BUGS, QUESTIONS?
-''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''
 
 Send me an email. I am happy to get your comments and to help to get litstash
 working for you.
