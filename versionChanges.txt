@@ -1,3 +1,10 @@
+
+1.7 - July 2024
+'''''''''''''''
+- restart support for author submission batch downloading by accessing submission list through API
+- fix various bugs including errors caused by trailing whitespaces on user input
+- increase retry limit
+
 1.6 - April 2024
 ''''''''''''''''
 - fix various bugs introduced by Literotica's author page format change

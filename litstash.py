@@ -2,7 +2,7 @@
 
 #    LICENSE INFORMATION: GNU GPLv3.0-or-later
 
-#    litstash is a downloader of submissions from Literotica or xnxx stories
+#    litstash is a downloader of submissions from Literotica and xnxx stories
 
 #    Copyright (C) 2023 NocturnalNebula <nocturnalnebula@proton.me>
 
@@ -35,8 +35,8 @@ import traceback
 # initialize global variables
 origCwd = os.getcwd()
 downloadList = []
-version = 'Version: 1.6'
-updated = 'Updated: April 2024'
+version = 'Version: 1.7'
+updated = 'Updated: July 2024'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -58,11 +58,11 @@ options:
 URL:
     - URLs should be surrounded by "quotes" to prevent an '&' from confusing the shell
     - URLs are any of the following:
-        - Literotica submission (story, poem, audio, illustration) 
+        - Literotica submission (story, poem, audio, illustration)
         - xnxx story (sexstories.com)
-        - any page containing links to either of the above (e.g. series pages)
-            NOTE: Literotica author pages no longer support batch downloading (as of April 2024)
-                  See below for more info and work-around
+        - any page containing links to either of the above
+        - Series Pages (for batch downloading a series)
+        - Author Pages (for batch downloading all of an author's works)
         - Wayback Machine capture of any of the above
     - multiple URLs can be included
 
@@ -70,26 +70,17 @@ examples:
     python litstash.py --version
     python litstash.py https://www.literotica.com/s/an-erotic-story-9 https://www.literotica.com/p/a-smutty-poem-8
     python litstash.py https://www.literotica.com/series/se/00000
+    python litstash.py https://www.literotica.com/authors/a-literotica-author
     python litstash.py "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
     python litstash.py -a "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
 
 more:
     - downloads will be saved in 'litstash-saves' created in the current working directory
     - visit https://github.com/NocturnalNebula/litstash/releases to check for new versions
-
-note on batch downloading from author pages:
-    Literotica auther pages (of the URL format "literotica.com/authors/...") are 
-    no longer supported due to a site format change in April 2024 which broke the 
-    functionality of litstash. However, "Series" pages ("literotica.com/series/...")
-    should still work fine.
-
-    A work-around is to find a Wayback Machine capture of the author page in question
-    and batch download all the stories from there. Search web.archive.org with a URL
-    of one of the author's stories, then navigate to their author page from the archived story.
-    Paste the URL of their archived author page to batch download all of their submissions.
-
-    Include "quotes" around the URL when you paste it. For example:
-    > python litstash.py "URL"
+    
+contact:
+    - created in Jan 2023 by NocturnalNebula
+    - email: nocturnalnebula@proton.me
 '''
 
 # CLASSES
@@ -126,12 +117,9 @@ class literotica:
         self.filename = ''
 
     def getApiData(self):
-        # collect data from rest api, put into a dict
+        # collect data from api, put into a dict
 
-        url = (
-            'https://literotica.com/api/3/stories/'+self.slug+
-            '?params={"contentPage"%3A'+str(self.currentPage)+'}'
-        )
+        url = 'https://literotica.com/api/3/stories/'+self.slug+'?params={"contentPage":'+str(self.currentPage)+'}'
         source = getSource(url)
 
         if source == 'skip': self.skip = 1; return
@@ -648,7 +636,7 @@ def cleanTitle(url):
 def getSource(url, attempts=0):
     # get the webpage html source from a given url and sort all errors
 
-    # certain errors require a retry, limit them to 5
+    # certain errors require a retry
     if attempts == 7:
         print('Too many attempts. Try again later.')
         return 'skip'
@@ -701,6 +689,11 @@ def getSource(url, attempts=0):
             attempts += 1
             return getSource(url, attempts)
         if '111' in str(e.reason):
+            print('Retrying in 5 seconds...')
+            time.sleep(5)
+            attempts += 1
+            return getSource(url, attempts)
+        if '-3' in str(e.reason):
             print('Retrying in 5 seconds...')
             time.sleep(5)
             attempts += 1
@@ -881,7 +874,9 @@ def cleanUrl(url):
     if url.startswith('http://'): url = 'https://' + url[7:]
     elif url.startswith('//'): url = 'https:' + url
     elif url.startswith('www'): url = 'https://' + url
-
+    
+    if not url.startswith('https://'): url = 'https://' + url
+    
     return url
 
 def export(path,filename,output):
@@ -1230,7 +1225,7 @@ def getList():
     # if user included -a flag, automatically download all detected submissions
     if a == 0:
         print('--> Select submissions to download (eg: 1 3 7 12, 2-9, a = all, q = quit)')
-        selection = input('--> ')
+        selection = input('--> ').strip()
     if a == 1: selection = 'a'
 
     # process user input
@@ -1276,16 +1271,7 @@ def scanForUrls(url):
     # scan any webpage for literotica or xnxx submissions
 
     print('Scanning given page for Submissions... ', end='')
-    
-    # skip modern literotica author pages (works and favorites)
-    if "literotica.com/authors/" in url:
-        print('''
-\nNote: As of April 2024, author pages are no longer supported.
-      See help page for more information.
-      > python litstash.py --help
-        ''')
-        return 0
-        
+            
     xnxxStoryCount = 0
     storyCount = 0
     originalStoryCount = 0
@@ -1416,6 +1402,63 @@ def scanForUrls(url):
     if totalCount != 0: print(f"found {totalCount}")
     else: print('')
 
+def scanAuthorPage(url):
+    # collect links to all submissions by given author url and append to downloadList
+    print("Author Page Detected")
+    
+    urlComponents = url.split("/")
+    username = str(urlComponents[urlComponents.index('authors')+1])
+    
+    print("[Username]   " + username)
+    
+    # avoid trying to download favorites
+    if '/favorites/' in url:
+        print ('''
+Unfortunately, Litstash does not currently support batch downloading favorites lists from the new author page layout.
+Try submitting a link to a Wayback Machine capture of the same favorites page with the previous layout.
+''')
+        return 0
+    
+    # get and display author userID
+    print("[UserID]     ", end="")
+    pageSource = getSource(cleanUrl(url))
+    userId = sandwichMaker(pageSource, 'userid:', ',')
+    if not userId == -1:
+        print(userId)
+    else:
+        print("") 
+        return 0
+    
+    # retrieve submission list from author API
+    print("[Scanning]   Submission List")
+    currentPage = 1
+    lastPage = 1
+    storyUrlList = []
+    
+    # loop through multiple pages of API if user has more than 50 submissions
+    while lastPage >= currentPage:
+
+        url = 'https://literotica.com/api/3/users/' + userId + '/stories?params={"page":' + str(currentPage) + '}'
+        authorApiData = json.loads(getSource(url))
+        lastPage = int(authorApiData['last_page'])
+        
+        submissionData = authorApiData['data']
+        
+        for submission in submissionData:
+            if submission['type'] == 'story': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
+            if submission['type'] == 'poem': storyUrlList.append('https://www.literotica.com/p/' + submission['url'])
+            if submission['type'] == 'illustra': storyUrlList.append('https://www.literotica.com/i/' + submission['url'])
+            else: pass
+            
+        print("[Done]       Page " + str(currentPage) + " of " + str(lastPage))
+        currentPage += 1
+
+    print("")
+    # append all detected submissions to downloadList
+    for url in storyUrlList: 
+        if url not in downloadList: 
+            downloadList.append(url)
+    
 def parseArgs(args):
     # parse all user arguments from the command line (urls or optional flags)
     
@@ -1431,9 +1474,12 @@ def parseArgs(args):
             print(usage)
             raise SystemExit
         elif arg == '-a': a = 1
-        elif arg == '--version':
+        elif arg == '--version' or arg == '-v':
             print(version)
             print(updated)
+            raise SystemExit
+        elif arg.startswith('-') and len(args) == 1:
+            print('Not a valid argument. Use --help for usage.')
             raise SystemExit
         elif 'literotica.com/s/' in arg:
             if arg not in downloadList: downloadList.append(arg)
@@ -1441,6 +1487,8 @@ def parseArgs(args):
             if arg not in downloadList: downloadList.append(arg)
         elif 'literotica.com/p/' in arg:
             if arg not in downloadList: downloadList.append(arg)
+        elif 'literotica.com/authors/' in arg:
+            scanAuthorPage(arg)
         elif 'literotica.com/stories/showstory.php' in arg:
             if arg not in downloadList: downloadList.append(arg)
         elif 'sexstories.com/story/' in arg:

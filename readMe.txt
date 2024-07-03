@@ -15,10 +15,8 @@ This python script can download submissions from Literotica and stories from
 xnxx. It also supports Wayback Machine captures from either site. Submissions 
 are saved in HTML format with embedded images, audios, and style tags preserved. 
 
-Additionally, litstash can download batches of submissions from series pages, 
-search results, or any other page containing submission URLs. Unfortunately,
-author pages are not supported, neither 'Works' nor 'Favorites', because
-submission URLs are not hardcoded into the page source.
+Additionally, litstash can download batches of submissions from author pages, 
+search results, or any other page containing submission URLs.
 
 Outputs include story metadata (author, series, date, etc...) for easy
 organization or conversion to EPUB in an ebook manager such as Calibre.
@@ -61,11 +59,11 @@ of any of the above. Submissions will be exported to
 EXAMPLE COMMANDS:
 
 > python litstash.py --version
-> python litstash.py --help
-> python litstash.py https://www.literotica.com/s/your-smutty-story-34 https://www.literotica.com/p/a-poem-11
+> python litstash.py https://www.literotica.com/s/an-erotic-story-9 https://www.literotica.com/p/a-smutty-poem-8
 > python litstash.py https://www.literotica.com/series/se/00000
+> python litstash.py https://www.literotica.com/authors/a-literotica-author
 > python litstash.py "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
-> python litstash.py "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
+> python litstash.py -a "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
 
 INSTRUCTIONS FOR INSTALLATION TO PATH (Mac and Linux)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -162,7 +160,7 @@ don't care what kind of smut you're into.
 A NOTE ON WAYBACK MACHINE CAPTURES
 ''''''''''''''''''''''''''''''''''
 
-Literotica has changed its site scheme/format four times since its inception. 
+Literotica has changed its site scheme/format five times since its inception. 
 Each change was relevant to how the submission data is scraped from the source 
 HTML. While downloading from Wayback Machine captures, you'll notice that the 
 scheme of each page is displayed. Although I have done everything I can to 
