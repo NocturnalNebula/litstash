@@ -1,4 +1,8 @@
 
+1.8 - July 2024
+'''''''''''''''
+- fix bug preventing audio stories from being batch downloaded from author page
+
 1.7 - July 2024
 '''''''''''''''
 - restart support for author submission batch downloading by accessing submission list through API

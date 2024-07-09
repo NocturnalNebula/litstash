@@ -35,7 +35,7 @@ import traceback
 # initialize global variables
 origCwd = os.getcwd()
 downloadList = []
-version = 'Version: 1.7'
+version = 'Version: 1.8'
 updated = 'Updated: July 2024'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
@@ -1446,6 +1446,7 @@ Try submitting a link to a Wayback Machine capture of the same favorites page wi
         
         for submission in submissionData:
             if submission['type'] == 'story': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
+            if submission['type'] == 'audio': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
             if submission['type'] == 'poem': storyUrlList.append('https://www.literotica.com/p/' + submission['url'])
             if submission['type'] == 'illustra': storyUrlList.append('https://www.literotica.com/i/' + submission['url'])
             else: pass
