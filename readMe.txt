@@ -2,7 +2,7 @@
         LITSTASH  --  readMe
         --------------------------
         Created by NocturnalNebula
-        nocturnalnebula@tutamail.com
+        nocturnalnebula@proton.me
         January 2023
         --------------------------
         GNU GPLv3.0
@@ -183,4 +183,4 @@ COMMENTS, BUGS, QUESTIONS?
 Send me an email. I am happy to get your comments and to help to get litstash
 working for you.
 
-nocturnalnebula@tutamail.com
+nocturnalnebula@proton.me
