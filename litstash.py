@@ -4,7 +4,7 @@
 
 #    litstash is a downloader of submissions from Literotica and xnxx stories
 
-#    Copyright (C) 2023 NocturnalNebula <nocturnalnebula@tutamail.com>
+#    Copyright (C) 2023 NocturnalNebula <nocturnalnebula@proton.me>
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ more:
     
 contact:
     - created in Jan 2023 by NocturnalNebula
-    - email: nocturnalnebula@tutamail.com
+    - email: nocturnalnebula@proton.me
 '''
 
 # CLASSES
