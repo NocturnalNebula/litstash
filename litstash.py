@@ -31,12 +31,16 @@ import sys
 import time
 import json
 import traceback
+import ssl
 
 # initialize global variables
 origCwd = os.getcwd()
+context = None
 downloadList = []
-version = 'Version: 1.8'
-updated = 'Updated: July 2024'
+oneOutput = ''
+currentSeries = ''
+version = 'Version: 1.9'
+updated = 'Updated: Jan 2025'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -51,25 +55,30 @@ usage:
     python litstash.py ["URL"...]
 
 options:
-    -h, --help    print usage guide
-    --version     print version number
-    -a            automatically download all detected submissions
+    -h, --help       print usage guide
+    -v, --version    print version number
+    -a, --all        automatically download all detected submissions
+    -o, --one-file   export all selected submissions in one html file
+    -s, --series     export series as one html file
+    -u, --update     download latest python script (not binary)
 
 URL:
-    - URLs should be surrounded by "quotes" to prevent an '&' from confusing the shell
+    - URLs should be surrounded by "quotes" to prevent an '&' or space from confusing the shell
     - URLs are any of the following:
         - Literotica submission (story, poem, audio, illustration)
         - xnxx story (sexstories.com)
-        - any page containing links to either of the above
-        - Series Pages (for batch downloading a series)
-        - Author Pages (for batch downloading all of an author's works)
+        - any page containing links to either of the above, including...
+            - Series Pages (for batch downloading a series with -s)
+            - Author Pages (for batch downloading all of an author's works)
+            - any other page (forum posts, search results, etc...)
         - Wayback Machine capture of any of the above
     - multiple URLs can be included
 
 examples:
     python litstash.py --version
-    python litstash.py https://www.literotica.com/s/an-erotic-story-9 https://www.literotica.com/p/a-smutty-poem-8
-    python litstash.py https://www.literotica.com/series/se/00000
+    python litstash.py --update
+    python litstash.py -o https://www.literotica.com/s/an-erotic-story-9 https://www.literotica.com/p/a-smutty-poem-8
+    python litstash.py -s https://www.literotica.com/series/se/00000
     python litstash.py https://www.literotica.com/authors/a-literotica-author
     python litstash.py "https://web.archive.org/web/20130919123456/https://www.literotica.com/s/a-deleted-story-4"
     python litstash.py -a "https://web.archive.org/web/20130723123456/https://www.literotica.com/stories/memberpage.php?uid=0000000&page=submissions"
@@ -77,7 +86,7 @@ examples:
 more:
     - downloads will be saved in 'litstash-saves' created in the current working directory
     - visit https://github.com/NocturnalNebula/litstash/releases to check for new versions
-    
+
 contact:
     - created in Jan 2023 by NocturnalNebula
     - email: nocturnalnebula@proton.me
@@ -103,6 +112,9 @@ class literotica:
         self.date = ''
         self.description = ''
         self.category = ''
+        self.metaRating = 0
+        self.headerRating = ''
+        self.tags = []
         self.pages = 1 # total pages in submission, default=1, change later
 
         # submission text attributes
@@ -164,12 +176,23 @@ class literotica:
                 self.description = str(self.apiData['submission']['description'])
                 self.category = getCategory(self.apiData['submission']['category_info']['pageUrl'])
 
+                # get rating and calculate both header and meta tag ratings
+                self.headerRating = self.apiData['submission']['rate_all']
+                if self.headerRating == 0:
+                    self.headerRating = '--'
+                else: self.metaRating = float(self.headerRating)*2
+
+                # get story tags and convert to string
+                for tag in self.apiData['submission']['tags']:
+                    self.tags.append(str(tag['tag']))
+                self.tags = ', '.join(self.tags)
+
                 # get series data only if it exists
                 try:
                     self.series = self.apiData['submission']['series']['meta']['title']
                 except TypeError:
                     pass
-                    
+
             # need to get real page source for illusration categories
             if self.category == 'Adult Comics' or self.category == 'Erotic Art':
                 # get page source to gather pageText, send it into getImages
@@ -207,7 +230,8 @@ class literotica:
         self.filename = getFilename(self.date,self.title)
 
     def export(self):
-        export(self.path, self.filename, self.output)
+        if s == 1: export(self.path, self.filename, self.output, '-'.join(self.series.split(' ')) + '.html')
+        else: export(self.path, self.filename, self.output)
 
 class waybackMachineLit:
 
@@ -218,7 +242,6 @@ class waybackMachineLit:
         self.authorPageUrl = ''
         self.publisher = "Literotica"
 
-
         self.pageSource = ''
 
         # submission metadata (filled with first page)
@@ -226,10 +249,13 @@ class waybackMachineLit:
         self.title = ''
         self.username = ''
         self.series = ''
-        self.date = ''
+        self.date = '0000-00-00'
         self.description = ''
         self.category = ''
-        self.pages = 1 # total pages in submission (default = 1, change later)
+        self.metaRating = 0
+        self.headerRating = '--'
+        self.tags = ''
+        self.pages = 1 # total pages in submission (default = 1, updated later)
 
         # submission text attributes
         self.text = ''
@@ -244,13 +270,12 @@ class waybackMachineLit:
         self.filename = ''
 
     # HELPER METHODS
-    def getDateFromAuthor(self):
+    def getDataFromAuthor(self):
     # for submissions without an upload date, retrieve it from the author page
 
         if self.authorPageUrl == '':
             print('Cannot find author page URL.')
-            print('Try a different Wayback Machine capture to include the upload date.')
-            self.date = '0000-00-00'
+            print('Try a different Wayback Machine capture to include all metadata.')
             return
 
         if self.authorPageUrl.startswith('//'):
@@ -261,19 +286,30 @@ class waybackMachineLit:
         # some author pages won't be captured by wayback machine
         if '<b>This member does not exists</b>' in authorPageSource:
             print('No capture available of author page.')
-            print('Try a different Wayback Machine capture to include the upload date.')
-            self.date = '0000-00-00'
+            print('Try a different Wayback Machine capture to include all metadata.')
             return
         else:
             # put the index before the relevant entry
             i = authorPageSource.find(f'/{self.slug}')
             if i == -1:
-                print('Cannot find submission upload date on author page.')
-                print('Try a different Wayback Machine capture to include the upload date.')
-                self.date = '0000-00-00'
+                print('Cannot find submission metadata on author page.')
+                print('Try a different Wayback Machine capture to include all metadata.')
                 return
+            # get rating from author page (usually first rating after submission url)
+            self.headerRating = sandwichMaker(authorPageSource, '(', ')', start=i)
+            if len(self.headerRating) == 4:
+                try:
+                    self.metaRating = float(self.headerRating)*2
+                except ValueError:
+                    self.metaRating = 0
+                    self.headerRating = '--'
+                    print ('Cannot find submission rating.')
+            else:
+                self.headerRating = '--'
+                print ('Cannot find submission rating.')
 
-            # scan forward from submission url to a substring mataching the date format (>**/**/**) *=digit
+            # get upload date from author page
+            # scan forward from submission url to a substring matching the date format (>**/**/**) *=digit
             date = ''
             while len(date) < 9:
 
@@ -287,7 +323,6 @@ class waybackMachineLit:
             self.date = ('-').join(['20'+date[2],date[0],date[1]])
 
     def getPageSource(self, url='', attempts=0):
-
         if attempts == 3:
             print('Wayback Machine capture is unavailable.')
             self.skip = 1
@@ -295,12 +330,12 @@ class waybackMachineLit:
 
         if url != '':
             source = getSource(url)
-
         else:
             # older captures (pre ~2010) have different url formats
             if self.scheme == 'Original' or self.scheme == 'Post-Original':
                 pageSlug = f"&page={self.currentPage}"
-            else: pageSlug = f"?page={self.currentPage}"
+            else:
+                pageSlug = f"?page={self.currentPage}"
 
             if self.currentPage == 1: pageSlug = ''
 
@@ -371,9 +406,15 @@ class waybackMachineLit:
 
             self.wordCount = sandwichMaker(self.pageSource, '"words_count":', ',')
             self.category = getCategory(sandwichMaker(self.pageSource, '/https://www.literotica.com/c/', '"'))
+            self.tags = sandwichMaker(self.pageSource, 'name="keywords" content="', '"')
+
+            self.headerRating = sandwichMaker(self.pageSource, '"rate_all":', ',')
+            if self.headerRating == -1:
+                self.headerRating = 0
+            else:
+                self.metaRating = float(self.headerRating)*2
 
             print('[Retrieved]   Submission Metadata')
-
 
         # extract and clean up pageText from pageSource
         # illustration categories have <img> tags below normal page text
@@ -394,9 +435,10 @@ class waybackMachineLit:
             self.username = sandwichMaker(self.pageSource,'page=submissions">','</a>')
             self.description = sandwichMaker(self.pageSource,'name="description" content="','"')
             self.category = getCategory(sandwichMaker(self.pageSource, 'literotica.com/c/', '"'))
+            self.tags = sandwichMaker(self.pageSource, 'name="keywords" content="', '"')
 
             self.authorPageUrl = sandwichMaker(self.pageSource,'<!-- ! --></span><a href="','"')
-            self.getDateFromAuthor()
+            self.getDataFromAuthor()
 
             print('[Retrieved]   Submission Metadata')
 
@@ -413,9 +455,10 @@ class waybackMachineLit:
             self.username = sandwichMaker(self.pageSource,'page=submissions">','</a>')
             self.description = sandwichMaker(self.pageSource,'name="description" content="','"/')
             self.category = sandwichMaker(self.pageSource,'>','<',self.pageSource.find('category.php'))
+            self.tags = sandwichMaker(self.pageSource, 'name="keywords" content="', '"')
 
             self.authorPageUrl = sandwichMaker(self.pageSource,'class="b-story-user"><a href="','">')
-            self.getDateFromAuthor()
+            self.getDataFromAuthor()
 
             print('[Retrieved]   Submission Metadata')
 
@@ -434,9 +477,10 @@ class waybackMachineLit:
             self.username = sandwichMaker(self.pageSource,'page=submissions">','</a>')
             self.description = sandwichMaker(self.pageSource,'name="description" content="','"')
             self.category = sandwichMaker(self.pageSource,'>','<',self.pageSource.find('category.php'))
+            self.tags = sandwichMaker(self.pageSource, 'name="keywords" content="', '"')
 
             self.authorPageUrl = sandwichMaker(self.pageSource,'by <a href="','"')
-            self.getDateFromAuthor()
+            self.getDataFromAuthor()
 
             print('[Retrieved]   Submission Metadata')
 
@@ -452,31 +496,29 @@ class waybackMachineLit:
 
             self.pages = self.pageSource.count(self.slug + '&amp;page=')
             if self.pages == 0: self.pages = 1
-            self.username = sandwichMaker(self.pageSource,'page=submissions">','</a>',self.pageSource.find('Helvetica"><strong>'))
             self.description = sandwichMaker(self.pageSource,'name="description" content="','"')
             self.category = sandwichMaker(self.pageSource,'>','<',self.pageSource.find('category.php'))
+            self.tags = sandwichMaker(self.pageSource, 'name="keywords" content="', '"')
+            self.username = self.tags.split(' ')[-1]
 
             self.authorPageUrl = sandwichMaker(self.pageSource,'by <a href="','"')
-            self.getDateFromAuthor()
+            self.getDataFromAuthor()
 
             print('[Retrieved]   Submission Metadata')
 
-        self.pageText = '<p>' + sandwichMaker(self.pageSource,'<font size="2"><br/>','</font>') + '</p>'
+        self.pageText = '<p>' + sandwichMaker(self.pageSource,'<font size="2">','</font>',start=self.pageSource.find('<font size="2">')+1) + '</p>'
 
     # PRIMARY METHODS
     def download(self):
     # collect all data needed to export the submission, calling the appropiate download functions for each scheme
-
         print(f"\n[Downloading] {cleanTitle(self.url)} ({getSite(self.url)})")
         print(f"[URL]         {self.url}")
 
         # loop through each page of submission and gather all page text
         while self.currentPage <= self.pages:
-
             self.getPageSource()
 
             if self.skip == 1: return
-
             self.getScheme()
 
             # call relevant method to extract page text
@@ -518,7 +560,7 @@ class waybackMachineLit:
         export(self.path, self.filename, self.output)
 
 class xnxx:
-    
+
     def __init__(self, url):
         # immediately defined
         self.url = url
@@ -533,6 +575,9 @@ class xnxx:
         self.date = ''
         self.description = ''
         self.category = ''
+        self.tags = ''
+        self.metaRating = 0
+        self.headerRating = ''
 
         # submission text attributes
         self.text = ''
@@ -550,35 +595,45 @@ class xnxx:
 
         print(f"\n[Downloading] {cleanTitle(self.url)} ({getSite(self.url)})")
         print(f"[URL]         {self.url}")
-        
+
         self.pageSource = getSource(self.url)
         if self.pageSource == 'skip': self.skip = 1; return
-        
+
         title = sandwichMaker(self.pageSource,'<h2>\n','<span',self.pageSource.find('<div class="story_info">'))
-        if title == -1: self.title = 'unkown_title'
+        if title == -1: self.title = 'unknown_title'
         else:
             self.title = (' ').join(list(filter(None, title.replace('\t','').split(' '))))
- 
+
         self.username = sandwichMaker(self.pageSource,'">','</a>', self.pageSource.find('/profile'))
         if self.username == -1: self.username = 'unknown_author'
-        
+
         description = sandwichMaker(self.pageSource,'</h2>\n','</div>',self.pageSource.find('Introduction:'))
         if description == -1: self.description = ''
         else:
             self.description = (' ').join(list(filter(None, description.replace('\t','').split(' '))))
 
-        category = sandwichMaker(self.pageSource,'<div class="top_info">\n','</div>').replace('\t','')
-        self.category = (' ').join(list(filter(None, category.split(' '))))
-            
+        tags = sandwichMaker(self.pageSource,'<div class="top_info">\n','</div>').replace('\t','')
+        self.tags = (' ').join(list(filter(None, tags.lower().split(' '))))
+
+        self.category = self.tags.split(', ')[0].title()
+
+        self.headerRating = sandwichMaker(self.pageSource,'Rated <span class="color2">','</span>')
+        if self.headerRating == -1: self.headerRating = 0
+
+        self.metaRating = float(self.headerRating)/10
+
         date = sandwichMaker(self.pageSource,'Posted ','<div id="report">',self.pageSource.find('<div class="story_date">'))
-        if date == -1: self.date = '0000-00-00'
+        if date == -1:
+            self.date = '0000-00-00'
         else:
             date = list(filter(None, date.replace('\t','').split(' ')))
-            if 'ago' in date: self.date = '0000-00-00'
+            if 'ago' in date:
+                self.date = '0000-00-00'
+                print('Cannot extract date from newly posted XNXX stories.')
             else:
                 self.date = ('-').join([date[-1],getMonth(date[-2]),'0' + date[1][:-2] if int(date[1][:-2])<10 else date[1][:-2]])
-        
-        self.text = sandwichMaker(self.pageSource, '<div class="block_panel">', '<!-- VOTES -->', self.pageSource.find('<!-- CONTENT -->'))
+
+        self.text = sandwichMaker(self.pageSource, '<div class="block_panel">', '<!-- VOTES -->', self.pageSource.find('<!-- CONTENT -->')) + '<br><br>'
 
         self.wordCount = wordCount(self.text)
 
@@ -609,12 +664,12 @@ def sandwichMaker(textSource, topBread, bottomBread, start=0, reverse=0):
 
 def cleanTitle(url):
     # convert the submission url into a temp title to display while downloading
-    
+
     # xnxx url
     if 'sexstories.com' in url:
         if url.endswith('/'): url = url[:-1]
         return url.split('/')[-1].replace('_', ' ').title()
-    
+
     # Original Literotica url (no title in url, use number)
     if 'literotica.com/stories/showstory.php' in url:
         return f"Title Unknown ({url.split('?')[-1]})"
@@ -636,13 +691,14 @@ def cleanTitle(url):
 def getSource(url, attempts=0):
     # get the webpage html source from a given url and sort all errors
 
+    global context
+
     # certain errors require a retry
     if attempts == 7:
         print('Too many attempts. Try again later.')
         return 'skip'
-
     try:
-        return urllib.request.urlopen(url).read().decode('utf-8')
+        return urllib.request.urlopen(url,context=context).read().decode('utf-8', 'ignore')
 
     # catch any error and disply some reasons, then either return or retry
     except urllib.error.HTTPError as e:
@@ -701,6 +757,14 @@ def getSource(url, attempts=0):
         if '113' in str(e.reason):
             print('URL should be in format "https://www.literotica.com/*/... (* = s, p, or i)"')
             return 'skip'
+        if 'SSL: CERTIFICATE_VERIFY_FAILED' in str(e.reason):
+            print('--> Disable SSL verification and retry? [y/n]')
+            response = input('--> ').lower()
+            if response == 'y' or response == 'yes':
+                context = ssl._create_unverified_context()
+                return getSource(url,attempts)
+            else:
+                return 'skip'
 
     except ValueError as e:
         print('ValueError on the following URL')
@@ -819,7 +883,7 @@ def getCategory(category):
 def getKind(url):
     # check if submission is a story, poem, or illustration
 
-    if '/s/' in url or '/stories/showstory.php' in url or 'sexstories.com' in url: 
+    if '/s/' in url or '/stories/showstory.php' in url or 'sexstories.com' in url:
         return 'Story'
     elif '/i/' in url: return 'Illustration'
     elif '/p/' in url: return 'Poem'
@@ -830,7 +894,7 @@ def getMonth(month):
     'January' : '01','February' : '02','March' : '03','April' : '04','May' : '05','June' : '06',
     'July' : '07','August' : '08','September' : '09','October' : '10','November' : '11','December' : '12'
     }
-    
+
     return month_dict[month]
 
 def wordCount(text):
@@ -849,11 +913,14 @@ def cleanHexCodes(text):
 
 def cleanUrl(url):
     # ensure each url begins with https:// and a proper domain (some scraped urls are incomplete)
-    
+
+    # replace any spaces in the url with '%20' (might be in a username)
+    url = url.replace(' ','%20')
+
     # detect and fix xnxx url
     if '/story/' in url:
-        if not 'sexstories.com' in url: url = 'https://www.sexstories.com' + url      
-    
+        if not 'sexstories.com' in url: url = 'https://www.sexstories.com' + url
+
     # detect and fix literotica url (if not xnxx, it's literotica)
     if not 'sexstories.com' in url:
         if not 'literotica.com' in url: url = 'https://www.literotica.com' + url
@@ -869,52 +936,74 @@ def cleanUrl(url):
             if 'im_/' not in  url:
                 i = url.rfind('/http')
                 url = url[:i]+'im_'+url[i:]
-            
+
     # ensure that each url begins with https:// before requesting source
     if url.startswith('http://'): url = 'https://' + url[7:]
     elif url.startswith('//'): url = 'https:' + url
     elif url.startswith('www'): url = 'https://' + url
-    
+
     if not url.startswith('https://'): url = 'https://' + url
-    
+
     return url
 
-def export(path,filename,output):
+def export(path,filename,output,seriesName=''):
     # save final export to file
 
-    # check if file path exists, create directories, and change working directory
-    if not os.path.isdir(path): os.makedirs(path, exist_ok=True)
-    os.chdir(path)
+    global oneOutput
+    global currentSeries
 
-    # output the extracted submission
-    f = open(filename, 'w', encoding='utf-8')
-    f.write(output)
+    if o == 1:
+        oneOutput += output
+        filename = 'lit-collection.html'
+        path = os.path.join(origCwd, 'litstash-saves')
+        if not os.path.isdir(path): os.makedirs(path, exist_ok=True)
+        os.chdir(path)
+        f = open(filename, 'w', encoding='utf-8')
+        f.write(oneOutput)
+        print(f"[Finished]    Exported to: {os.path.join(path, filename)}")
+    elif s == 1:
+        if currentSeries != seriesName:
+            oneOutput = ''
+            currentSeries = seriesName
+        oneOutput += output
+        if not os.path.isdir(path): os.makedirs(path, exist_ok=True)
+        os.chdir(path)
+        f = open(seriesName, 'w', encoding='utf-8')
+        f.write(oneOutput)
+        print(f"[Finished]    Exported to: {os.path.join(path, seriesName)}")
+    else:
+        if not os.path.isdir(path): os.makedirs(path, exist_ok=True)
+        os.chdir(path)
+        f = open(filename, 'w', encoding='utf-8')
+        f.write(output)
+        print(f"[Finished]    Exported to: {os.path.join(path, filename)}")
+
+    # close file and return to original working directory
     f.close()
-
-    # return to original working directory
     os.chdir(origCwd)
-
-    print(f"[Finished]    Exported to: {os.path.join(path, filename)}")
 
 def getOutput(obj):
     # create the ultimate string which will be the final output
 
     header = (
-        f'<title>{obj.title}</title>\n\n'
-        f'<meta name="title" content="{obj.title}">\n'
-        f'<meta name="author" content="{obj.username}">\n'
-        f'<meta name="tags" content="{obj.category}">\n'
-        f'<meta name="series" content="{obj.series}">\n'
-        f'<meta name="publisher" content="{obj.publisher}">\n'
-        f'<meta name="pubdate" content="{obj.date}">\n'
+        f'<title>{obj.series if s == 1 else "Lit Collection" if o == 1 else obj.title}</title>\n\n'
+        f'<meta name="title" content="{"Lit Collection" if o == 1 else obj.series if s == 1 else obj.title}">\n'
+        f'<meta name="author" content="{"Various Authors" if o == 1 else obj.username}">\n'
+        f'<meta name="tags" content="{"" if o == 1 else "" if s == 1 else obj.category}">\n'
+        f'<meta name="keywords" content="{"" if o == 1 else "" if s == 1 else obj.tags}">\n'
+        f'<meta name="series" content="{"" if o == 1 else obj.series}">\n'
+        f'<meta name="publisher" content="{"" if o == 1 else obj.publisher}">\n'
+        f'<meta name="pubdate" content="{"" if o == 1 else "" if s == 1 else obj.date}">\n'
+        f'<meta name="rating" content="{"" if o == 1 else "" if s == 1 else obj.metaRating}">\n'
     )
 
     body_header = (
         f'<font size = "1">{obj.url}</font><br>\n'
         f'<font size = "5"><b>{obj.title}</b></font><br>\n'
         f'<font size = "4">{obj.username}</font><br>\n'
-        f'<font size = "1">{obj.wordCount} words  ||  {obj.category}  ||  {obj.date}</font><br>\n'
-        f'<font size = "3"><i>{obj.description}</i></font><br>\n'
+        f'<font size = "2">{obj.wordCount} words  ||  {obj.headerRating}{" stars" if obj.publisher == "Literotica" else "%"}  ||  {obj.category}  ||  {obj.date}</font><br>\n'
+        f'<font size = "2">[{obj.tags}]</font><br>\n'
+        f'<font size = "4"><i>{obj.description}</i></font><br>\n'
         f'<font><b>- - - - - - - - - - - - - -</b></font><br>\n'
     )
 
@@ -1048,7 +1137,10 @@ def getAudio(pageText, pageSource, title, username):
     # retrieve audio files from page text, or from embedded player (modern scheme)
 
     audioTypes = ['mp3','ogg','wav','aiff','m4a','flac', 'ram']
-    savePath = os.path.join(getPath(username), 'audios')
+
+    if o == 0: savePath = os.path.join(getPath(username), 'audios')
+    else: savePath = os.path.join(origCwd, 'litstash-saves', 'audios')
+
     urlCount = pageText.count('<a href="')
     audioCount = pageSource.count('<audio src="')
     audioUrls = []
@@ -1134,7 +1226,9 @@ def getImages(text, username):
     savedCount = 0
     skippedCount = 0
     savedUrls = []
-    savePath = os.path.join(getPath(username), 'images')
+
+    if o == 0: savePath = os.path.join(getPath(username), 'images')
+    else: savePath = os.path.join(origCwd, 'litstash-saves', 'images')
 
     for i in range(imageCount):
 
@@ -1152,7 +1246,7 @@ def getImages(text, username):
         if success:
             savedCount += 1
             savedUrls.append(imageUrl)
-            print(f"[Retrieved]   Image {savedCount} of {imageCount}  ({skippedCount} Skipped)")
+            print(f"[Retrieved]   Image {savedCount} of {imageCount}{'   ' if savedCount<10 else '  '}({skippedCount} Skipped)")
 
         # if f-file is unavailable, try to save p-file (lower res)
         elif '/illustra/' in imageUrl and imageName.startswith('f'):
@@ -1175,6 +1269,21 @@ def getImages(text, username):
 
     return text # return final text with local image urls (images/...)
 
+def update():
+    # update to latest version of litstash
+
+    print('Current Installed Version:')
+    print(version)
+    print(updated)
+    print('--> Do you want to download the newest version of the python script? [y/n]')
+    response = input('--> ').lower()
+    if response == 'y' or response == 'yes':
+        print('Downloading Newest Version...')
+        saveFile('https://raw.githubusercontent.com/NocturnalNebula/litstash/refs/heads/main/litstash.py', 'litstash.py', origCwd)
+        print('Success. Use -v or --version to check your current version.')
+    else:
+        raise SystemExit
+
 # PRIMARY FUNCTIONS
 
 def getSubmission(url):
@@ -1182,17 +1291,17 @@ def getSubmission(url):
 
     # ensure url begins with 'https://'
     url = cleanUrl(url)
-    
+
     # each submission is an object while being downloaded
     site = getSite(url)
     if site == 'Literotica': obj = literotica(url) # create literotica object
     elif site == 'xnxx': obj = xnxx(url) # create xnxx object
     elif site == 'Wayback Machine/Literotica': obj = waybackMachineLit(url) # create wayback machine object
     elif site == 'Wayback Machine/xnxx': obj = xnxx(url) # create wayback machine object
-    else: 
+    else:
         print('Unknown website - Skipping submission...')
         return 0
-        
+
     obj.download() # retrieve all metadata, page text, audios and images for submission
     if obj.skip == 1: print('Skipping submission...'); del obj; return 0 # obey skip flag
     else:
@@ -1204,14 +1313,41 @@ def getSubmission(url):
 def getList():
     # show list of all detected submissions, send selections to be downloaded
 
+    # initialize variables
     savedCount = 0
     skippedCount = 0
+    selectionList = []
+
+    def parseItem(item):
+        # populate selection list with each item in selection
+
+        nonlocal selectionList # write-access to higher-level variable
+
+        # check every char in item and test if it's legal
+        for char in item:
+            if char not in '0123456789-':
+                print(f'The following character is invalid: {char}')
+                print('Quitting...')
+                raise SystemExit
+
+        if '-' in item: # parse range of selections
+            if len(item) < 3:
+                print('Do not include spaces in ranges.')
+                raise SystemExit
+            numbers = item.split('-')
+            for i in range(int(numbers[0])-1,int(numbers[1])):
+                if i not in selectionList:
+                    selectionList.append(i)
+        else: # parse single selections
+            item = int(item)-1
+            if item not in selectionList:
+                selectionList.append(item)
 
     if len(downloadList) == 0:
         print('No submissions detected. Quitting...')
         raise SystemExit
 
-    print(f"Detected {len(downloadList)} unique submission(s) in total")
+    print(f"Detected {len(downloadList)} unique submission(s) in total.")
 
     if len(downloadList) == 1: # automatically download single stories
         getSubmission(downloadList[0])
@@ -1224,54 +1360,43 @@ def getList():
 
     # if user included -a flag, automatically download all detected submissions
     if a == 0:
-        print('--> Select submissions to download (eg: 1 3 7 12, 2-9, a = all, q = quit)')
+        print('--> List submissions or ranges to download (eg: 1 3 7 12, 2-9, [a]ll or [q]uit)')
         selection = input('--> ').strip()
     if a == 1: selection = 'a'
 
     # process user input
-    if selection == 'q': raise SystemExit
-
-    if selection == 'a':
-        for submission in downloadList:
-            finished = getSubmission(submission)
-            if finished == 0:
-                skippedCount += 1
-            if finished == 1:
-                savedCount += 1
-                print(f"[Completed]   {savedCount} of {len(downloadList)} Submissions ({skippedCount} Skipped)")
+    if selection == 'q':
+        print('Quitting...')
         raise SystemExit
+    elif selection == 'a':
+        for i in range(0,len(downloadList)):
+            selectionList.append(i)
+    else:
+        for item in selection.replace(',',' ').split(' '):
+            if item: parseItem(item)
 
-    if ' ' in selection:
-        selectionList = selection.split(' ')
-        for number in selectionList:
-            finished = getSubmission(downloadList[int(number)-1])
-            if finished == 0:
-                skippedCount += 1
-            if finished == 1:
-                savedCount += 1
-                print(f"[Completed]   {savedCount} of {len(selectionList)} Submissions ({skippedCount} Skipped)")
-        raise SystemExit
+    # download the list of selected submissions
+    for number in selectionList:
 
-    if '-' in selection:
-        numbers = selection.split('-')
-        for i in range(int(numbers[0])-1,int(numbers[1])):
-            finished = getSubmission(downloadList[i])
-            if finished == 0:
-                skippedCount += 1
-            if finished == 1:
-                savedCount += 1
-                print(f"[Completed]   {savedCount} of {int(numbers[1])-int(numbers[0])+1} Submissions ({skippedCount} Skipped)")
-        raise SystemExit
+        if number >= len(downloadList): # ensure number is legal
+            print(f'The following selection is out of range: {number+1}')
+            print('Quitting...')
+            raise SystemExit
 
-    if selection.isdigit():
-        getSubmission(downloadList[int(selection)-1])
-        raise SystemExit
+        success = getSubmission(downloadList[number])
+        if success == 0:
+            skippedCount += 1
+            print(f"[Completed]   {savedCount} of {len(selectionList)} Submissions ({skippedCount} Skipped)")
+        if success == 1:
+            savedCount += 1
+            print(f"[Completed]   {savedCount} of {len(selectionList)} Submissions ({skippedCount} Skipped)")
+    raise SystemExit
 
 def scanForUrls(url):
     # scan any webpage for literotica or xnxx submissions
 
     print('Scanning given page for Submissions... ', end='')
-            
+
     xnxxStoryCount = 0
     storyCount = 0
     originalStoryCount = 0
@@ -1386,7 +1511,7 @@ def scanForUrls(url):
         end = i
 
         url = cleanUrl(pageSource[beg:end])
-        
+
         # do not confuse a link to the poetry category with a submission
         if url.endswith('/p/'):
             totalPoems -= 1
@@ -1405,12 +1530,12 @@ def scanForUrls(url):
 def scanAuthorPage(url):
     # collect links to all submissions by given author url and append to downloadList
     print("Author Page Detected")
-    
+
     urlComponents = url.split("/")
     username = str(urlComponents[urlComponents.index('authors')+1])
-    
+
     print("[Username]   " + username)
-    
+
     # avoid trying to download favorites
     if '/favorites/' in url:
         print ('''
@@ -1418,7 +1543,7 @@ Unfortunately, Litstash does not currently support batch downloading favorites l
 Try submitting a link to a Wayback Machine capture of the same favorites page with the previous layout.
 ''')
         return 0
-    
+
     # get and display author userID
     print("[UserID]     ", end="")
     pageSource = getSource(cleanUrl(url))
@@ -1426,84 +1551,124 @@ Try submitting a link to a Wayback Machine capture of the same favorites page wi
     if not userId == -1:
         print(userId)
     else:
-        print("") 
+        print("")
         return 0
-    
+
     # retrieve submission list from author API
     print("[Scanning]   Submission List")
     currentPage = 1
     lastPage = 1
     storyUrlList = []
-    
+
     # loop through multiple pages of API if user has more than 50 submissions
     while lastPage >= currentPage:
 
-        url = 'https://literotica.com/api/3/users/' + userId + '/stories?params={"page":' + str(currentPage) + '}'
+        url = 'https://literotica.com/api/3/users/' + userId + '/stories?params={"page":' + str(currentPage) + ',"pageSize":5000}'
         authorApiData = json.loads(getSource(url))
         lastPage = int(authorApiData['last_page'])
-        
+
         submissionData = authorApiData['data']
-        
+
         for submission in submissionData:
             if submission['type'] == 'story': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
             if submission['type'] == 'audio': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
             if submission['type'] == 'poem': storyUrlList.append('https://www.literotica.com/p/' + submission['url'])
             if submission['type'] == 'illustra': storyUrlList.append('https://www.literotica.com/i/' + submission['url'])
             else: pass
-            
-        print("[Done]       Page " + str(currentPage) + " of " + str(lastPage))
+
         currentPage += 1
 
     print("")
     # append all detected submissions to downloadList
-    for url in storyUrlList: 
-        if url not in downloadList: 
+    for url in storyUrlList:
+        if url not in downloadList:
             downloadList.append(url)
-    
+
 def parseArgs(args):
     # parse all user arguments from the command line (urls or optional flags)
-    
-    # use 'a' as a toggle to auto-download all submissions if -a in arguments
+
     global a
+    global o
+    global s
     a = 0
+    o = 0
+    s = 0
+    seriesDetected = 0
+    nonSeriesDetected = 0
 
     if len(args) == 0: print(usage); raise SystemExit
 
     for arg in args:
 
-        if arg == '-h' or arg == '--help':
+        if arg == '-h' or arg == '--help': # output help / usage info
             print(usage)
             raise SystemExit
-        elif arg == '-a': a = 1
-        elif arg == '--version' or arg == '-v':
+        elif arg == '-a' or arg == '--all': a = 1 # flag to download all
+        elif arg == '-o' or arg == '--one-file': o = 1 # flag to export as one file
+        elif arg == '-s' or arg == '--series': s = 1 # flag to mark series export as one file
+        elif arg == '-v' or arg == '--version': # output version info and quit
             print(version)
             print(updated)
+            print('Visit https://github.com/NocturnalNebula/litstash/releases for latest full release.')
+            print('Use the -u or --update flag to quickly update to the latest version.')
             raise SystemExit
-        elif arg.startswith('-') and len(args) == 1:
-            print('Not a valid argument. Use --help for usage.')
+        elif arg == '-u' or arg == '--update':
+            update()
+            raise SystemExit
+        elif arg.startswith('-'):
+            print(arg + ' is not a valid argument. Use --help for usage.')
+            print('Quitting...')
             raise SystemExit
         elif 'literotica.com/s/' in arg:
             if arg not in downloadList: downloadList.append(arg)
+            nonSeriesDetected = 1
         elif 'literotica.com/i/' in arg:
             if arg not in downloadList: downloadList.append(arg)
+            nonSeriesDetected = 1
         elif 'literotica.com/p/' in arg:
             if arg not in downloadList: downloadList.append(arg)
+            nonSeriesDetected = 1
         elif 'literotica.com/authors/' in arg:
             scanAuthorPage(arg)
+            nonSeriesDetected = 1
+        elif 'literotica.com/series/' in arg:
+            seriesDetected = 1
+            scanForUrls(arg)
         elif 'literotica.com/stories/showstory.php' in arg:
-            if arg not in downloadList: downloadList.append(arg)
+            if 'web.archive.org' not in arg:
+                print('Use modern Literotica URL format.')
+            else:
+                if arg not in downloadList: downloadList.append(arg)
+                nonSeriesDetected = 1
         elif 'sexstories.com/story/' in arg:
             if arg not in downloadList: downloadList.append(arg)
+            nonSeriesDetected = 1
         else:
             scanForUrls(arg)
+            nonSeriesDetected = 1
 
-    # send downloadList to be comprehended and downloaded
+    if s == 1:
+        if o == 1:
+            print('Do not use --series and --one-file tags together.')
+            print('Quitting...')
+            raise SystemExit
+        else:
+            if seriesDetected == 0:
+                print('No series page detected. Use --series tag with a series URL.')
+                print('Quitting...')
+                raise SystemExit
+            if nonSeriesDetected == 1:
+                print('Only use --series tag with series URLs.')
+                print('Quitting...')
+                raise SystemExit
+
+    # send downloadList to be parsed and downloaded
     getList()
 
 # START PROGRAM
 
 def main():
-    # entire program runs from this function, handle KeyboardInterrupt error here
+    # run program and handle keyboard interrupt
 
     try:
         parseArgs(sys.argv[1:]) # send command line arguments to be parsed

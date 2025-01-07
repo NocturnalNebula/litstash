@@ -1,4 +1,15 @@
 
+1.9 - Jan 2025
+''''''''''''''
+- no longer use pagination when collecting user works from API
+- fix bug caused by usernames that contain spaces
+- headers now show tags and ratings
+- metadata now contains ratings (from 0 to 10) and tags under "keywords"
+- added series flag (-s or --series) to output entire series as one file
+- added one-file flag (-o or --one-file) to output all submissions as one file
+- added update flag (-u or --update) to download latest script version from github
+- improve parsing of user input for selections to download
+
 1.8 - July 2024
 '''''''''''''''
 - fix bug preventing audio stories from being batch downloaded from author page
