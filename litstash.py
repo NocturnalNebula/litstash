@@ -39,7 +39,7 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Version: 1.9'
+version = 'Litstash 1.9.1'
 updated = 'Updated: Jan 2025'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
@@ -178,7 +178,11 @@ class literotica:
 
                 # get rating and calculate both header and meta tag ratings
                 self.headerRating = self.apiData['submission']['rate_all']
-                if self.headerRating == 0:
+
+                if self.headerRating == None: # some submissions have ratings disabled
+                    self.headerRating = 0
+
+                if self.headerRating == 0: # some submissions don't have a rating
                     self.headerRating = '--'
                 else: self.metaRating = float(self.headerRating)*2
 
@@ -713,6 +717,8 @@ def getSource(url, attempts=0):
                 print('Trying a different URL of the same page...')
                 url = url.replace('//english.','//www.')
                 return getSource(url, attempts)
+            return 'skip'
+        if e.code == 405:
             return 'skip'
         if e.code == 503:
             print('Retrying in 5 seconds...')
@@ -1297,7 +1303,7 @@ def getSubmission(url):
     if site == 'Literotica': obj = literotica(url) # create literotica object
     elif site == 'xnxx': obj = xnxx(url) # create xnxx object
     elif site == 'Wayback Machine/Literotica': obj = waybackMachineLit(url) # create wayback machine object
-    elif site == 'Wayback Machine/xnxx': obj = xnxx(url) # create wayback machine object
+    elif site == 'Wayback Machine/xnxx': obj = xnxx(url) # create xnxx object (even if from wayback machine)
     else:
         print('Unknown website - Skipping submission...')
         return 0
@@ -1560,7 +1566,7 @@ Try submitting a link to a Wayback Machine capture of the same favorites page wi
     lastPage = 1
     storyUrlList = []
 
-    # loop through multiple pages of API if user has more than 50 submissions
+    # loop through multiple pages of API if user has more than 5000 submissions
     while lastPage >= currentPage:
 
         url = 'https://literotica.com/api/3/users/' + userId + '/stories?params={"page":' + str(currentPage) + ',"pageSize":5000}'
