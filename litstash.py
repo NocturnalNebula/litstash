@@ -39,8 +39,8 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.1'
-updated = 'Updated: Jan 2025'
+version = 'Litstash 1.9.2'
+updated = 'Updated: April 2025'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -1576,10 +1576,10 @@ Try submitting a link to a Wayback Machine capture of the same favorites page wi
         submissionData = authorApiData['data']
 
         for submission in submissionData:
-            if submission['type'] == 'story': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
-            if submission['type'] == 'audio': storyUrlList.append('https://www.literotica.com/s/' + submission['url'])
-            if submission['type'] == 'poem': storyUrlList.append('https://www.literotica.com/p/' + submission['url'])
-            if submission['type'] == 'illustra': storyUrlList.append('https://www.literotica.com/i/' + submission['url'])
+            if submission['type'] == 'story': storyUrlList.append('https://www.literotica.com/s/' + str(submission['url']))
+            if submission['type'] == 'audio': storyUrlList.append('https://www.literotica.com/s/' + str(submission['url']))
+            if submission['type'] == 'poem': storyUrlList.append('https://www.literotica.com/p/' + str(submission['url']))
+            if submission['type'] == 'illustra': storyUrlList.append('https://www.literotica.com/i/' + str(submission['url']))
             else: pass
 
         currentPage += 1

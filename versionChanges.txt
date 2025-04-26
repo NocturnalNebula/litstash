@@ -1,4 +1,8 @@
 
+1.9.2 - April 2025
+''''''''''''''''''
+- fix error caused by submissions with numbers as titles when scanning author pages
+
 1.9.1 - Jan 2025
 ''''''''''''''''
 - update a few comments
