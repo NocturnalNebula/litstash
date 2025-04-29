@@ -39,7 +39,7 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.2'
+version = 'Litstash 1.9.3'
 updated = 'Updated: April 2025'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
@@ -173,6 +173,10 @@ class literotica:
                 self.title = str(self.apiData['submission']['title']).replace('/','-')
 
                 self.username = str(self.apiData['submission']['authorname'])
+
+                # check if submission  is already saved
+                if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
+
                 self.description = str(self.apiData['submission']['description'])
                 self.category = getCategory(self.apiData['submission']['category_info']['pageUrl'])
 
@@ -408,6 +412,9 @@ class waybackMachineLit:
             date = sandwichMaker(self.pageSource, '"date_approve":"', '"').split('/')
             self.date = ('-').join([date[2],date[0],date[1]])
 
+            # check if submission  is already saved
+            if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
+
             self.wordCount = sandwichMaker(self.pageSource, '"words_count":', ',')
             self.category = getCategory(sandwichMaker(self.pageSource, '/https://www.literotica.com/c/', '"'))
             self.tags = sandwichMaker(self.pageSource, 'name="keywords" content="', '"')
@@ -444,6 +451,9 @@ class waybackMachineLit:
             self.authorPageUrl = sandwichMaker(self.pageSource,'<!-- ! --></span><a href="','"')
             self.getDataFromAuthor()
 
+            # check if submission  is already saved
+            if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
+
             print('[Retrieved]   Submission Metadata')
 
         self.pageText = sandwichMaker(self.pageSource,'b-story-body-x x-r15"><div>','</div>')
@@ -463,6 +473,9 @@ class waybackMachineLit:
 
             self.authorPageUrl = sandwichMaker(self.pageSource,'class="b-story-user"><a href="','">')
             self.getDataFromAuthor()
+
+            # check if submission  is already saved
+            if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
 
             print('[Retrieved]   Submission Metadata')
 
@@ -486,6 +499,9 @@ class waybackMachineLit:
             self.authorPageUrl = sandwichMaker(self.pageSource,'by <a href="','"')
             self.getDataFromAuthor()
 
+            # check if submission  is already saved
+            if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
+
             print('[Retrieved]   Submission Metadata')
 
         self.pageText = '<p>' + sandwichMaker(self.pageSource,'<div id="content"><p>','</p>') + '</p>'
@@ -507,6 +523,9 @@ class waybackMachineLit:
 
             self.authorPageUrl = sandwichMaker(self.pageSource,'by <a href="','"')
             self.getDataFromAuthor()
+
+            # check if submission  is already saved
+            if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
 
             print('[Retrieved]   Submission Metadata')
 
@@ -637,6 +656,9 @@ class xnxx:
             else:
                 self.date = ('-').join([date[-1],getMonth(date[-2]),'0' + date[1][:-2] if int(date[1][:-2])<10 else date[1][:-2]])
 
+        # check if submission  is already saved
+        if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
+
         self.text = sandwichMaker(self.pageSource, '<div class="block_panel">', '<!-- VOTES -->', self.pageSource.find('<!-- CONTENT -->')) + '<br><br>'
 
         self.wordCount = wordCount(self.text)
@@ -652,6 +674,19 @@ class xnxx:
         export(self.path, self.filename, self.output)
 
 # HELPER FUNCTIONS
+
+def checkForDouble(username, date, title):
+    # check if submission has already been saved
+
+    # allow a second download if it is intended for a one-file output
+    if s == 1 or o == 1: return 0
+
+    filePath = os.path.join(origCwd, 'litstash-saves', username.replace(' ','_'), getFilename(date, title))
+    if os.path.exists(filePath):
+        print("This submission has already been saved.")
+        return 1
+    else:
+        return 0
 
 def sandwichMaker(textSource, topBread, bottomBread, start=0, reverse=0):
     # return part of a string between two known substrings (the 'filling' of a sandwich)

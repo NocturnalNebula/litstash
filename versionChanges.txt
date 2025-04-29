@@ -1,4 +1,8 @@
 
+1.9.3 - April 2025
+''''''''''''''''''
+- check if submissions have already been downloaded before saving them again
+
 1.9.2 - April 2025
 ''''''''''''''''''
 - fix error caused by submissions with numbers as titles when scanning author pages
