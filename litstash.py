@@ -32,6 +32,7 @@ import time
 import json
 import traceback
 import ssl
+import random
 
 # initialize global variables
 origCwd = os.getcwd()
@@ -39,8 +40,8 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.3'
-updated = 'Updated: April 2025'
+version = 'Litstash 1.9.4'
+updated = 'Updated: September 2025'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -715,6 +716,10 @@ def cleanTitle(url):
 
     # all other Literotica schemes
     if 'literotica.com' in url:
+        
+        # remove page number (if deeper page is submitted)
+        if '?page=' in url: url = url.split('?page=')[0]
+        
         cleanTitle = url.split('/')[-1].split('-')
 
         # remove unimportant numbers from the end of the title
@@ -729,6 +734,9 @@ def cleanTitle(url):
 
 def getSource(url, attempts=0):
     # get the webpage html source from a given url and sort all errors
+    
+    # pause for random duration between 1 and 3 seconds (to reduce load on server)
+    time.sleep(random.uniform(1,3))
 
     global context
 
@@ -965,6 +973,9 @@ def cleanUrl(url):
     # detect and fix literotica url (if not xnxx, it's literotica)
     if not 'sexstories.com' in url:
         if not 'literotica.com' in url: url = 'https://www.literotica.com' + url
+        
+        # redirect to first page of story (if deeper page is submitted)
+        if '?page=' in url: url = url.split('?page=')[0]
 
     # detect and fix Wayback Machine url
     if '/web/' in url:
@@ -1075,6 +1086,9 @@ def getFilename(date, title):
 
 def saveFile(fileUrl, fileName, savePath, attempts=0):
     # download a resource (image or audio file), sort errors, retry with adjusted URLs
+
+    # pause for random duration between 1 and 3 seconds (to reduce load on server)
+    time.sleep(random.uniform(1,3))
 
     # allow 5 retries
     if attempts == 5:

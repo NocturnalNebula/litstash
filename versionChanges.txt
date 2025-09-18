@@ -1,3 +1,8 @@
+1.9.4 - September 2025
+''''''''''''''''''''''
+- redirect URLs to first page of story (if deeper page is submitted)
+- sleep for ~2 seconds between requests to reduce load on server
+- update ReadMe
 
 1.9.3 - April 2025
 ''''''''''''''''''

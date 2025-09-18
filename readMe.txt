@@ -31,7 +31,7 @@ REQUIREMENTS
 - git
 - Python (version 3.6 or later)
 - the following Python modules: urllib.request, urllib.error, os, sys,
-                                time, json, traceback, ssl
+                                time, json, traceback, ssl, random
 
 All the modules are from the standard library and should be installed
 automatically with Python. Ensure that Python is installed to your PATH and
@@ -164,6 +164,9 @@ It is normal for audio files to download slowly from Literotica.com. It is
 also normal for the Wayback Machine to be slow during high-traffic hours. If
 the connection times out or is reset, it will retry in 5 seconds.
 
+Additionally, litstash sleeps for ~2 seconds between requests to reduce the 
+load on the server.
+
 * Downloading from the Wayback Machine and getting errors?
 Try a different capture of the same submission. If batch downloading many
 submissions, some may create errors and be skipped. Look for a different
@@ -208,5 +211,3 @@ COMMENTS, BUGS, QUESTIONS?
 
 Send me an email. I am happy to get your comments and to help to get litstash
 working for you.
-
-nocturnalnebula@proton.me
