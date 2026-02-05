@@ -40,8 +40,8 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.4'
-updated = 'Updated: September 2025'
+version = 'Litstash 1.9.5'
+updated = 'Updated: February 2026'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -768,12 +768,20 @@ def getSource(url, attempts=0):
             time.sleep(5)
             attempts += 1
             return getSource(url, attempts)
+        if e.code == 403:
+            print('Forbidden URL.')
+            return 'skip'
         if e.code == 504:
             print('Gateway Time-out. Retrying in 5 seconds...')
             time.sleep(5)
             attempts += 1
             return getSource(url, attempts)
         if e.code == 502:
+            print('Retrying in 5 seconds...')
+            time.sleep(5)
+            attempts += 1
+            return getSource(url, attempts)
+        if e.code == 429:
             print('Retrying in 5 seconds...')
             time.sleep(5)
             attempts += 1
@@ -803,6 +811,8 @@ def getSource(url, attempts=0):
             time.sleep(5)
             attempts += 1
             return getSource(url, attempts)
+        if '-2' in str(e.reason):
+            return 'skip'
         if '113' in str(e.reason):
             print('URL should be in format "https://www.literotica.com/*/... (* = s, p, or i)"')
             return 'skip'
@@ -906,25 +916,44 @@ def getCategory(category):
     # dictionary to convert from url slug of categories to real category names
 
     categories = {
-        'anal-sex-stories' : 'Anal', 'audio-sex-stories' : 'Audio', 'bdsm-stories' : 'BDSM',
-        'celebrity-stories' : 'Celebrities & Fan Fiction', 'chain-stories' : 'Chain Stories',
-        'erotic-couplings' : 'Erotic Couplings', 'erotic-horror' : 'Erotic Horror',
-        'exhibitionist-voyeur' : 'Exhibitionist & Voyeur', 'fetish-stories' : 'Fetish',
-        'first-time-sex-stories' : 'First Time', 'gay-sex-stories' : 'Gay Male',
-        'group-sex-stories' : 'Group Sex', 'adult-how-to' : 'How To',
-        'adult-humor' : 'Humor & Satire', 'illustrated-erotic-fiction' : 'Illustrated',
-        'taboo-sex-stories' : 'Incest/Taboo', 'interracial-erotic-stories' : 'Interracial Love',
-        'lesbian-sex-stories' : 'Lesbian Sex', 'erotic-letters' : 'Letters & Transcripts',
-        'loving-wives' : 'Loving Wives', 'mature-sex' : 'Mature', 'mind-control' : 'Mind Control',
-        'non-english-stories' : 'Non-English', 'non-erotic-stories' : 'Non-Erotic',
-        'non-consent-stories' : 'NonConsent/Reluctance', 'non-human-stories' : 'NonHuman',
-        'erotic-novels' : 'Novels and Novellas', 'reviews-and-essays' : 'Reviews & Essays',
-        'adult-romance' : 'Romance', 'science-fiction-fantasy' : 'Sci-Fi & Fantasy',
-        'masturbation-stories' : 'Toys & Masturbation',
-        'transgender-crossdressers' : 'Transgender & Crossdressers',
-        'erotic-poetry' : 'Erotic Poetry', 'illustrated-poetry' : 'Illustrated Poetry',
-        'non-erotic-poetry' : 'Non-Erotic Poetry', 'erotic-audio-poetry' : 'Poetry With Audio',
-        'adult-comics' : 'Adult Comics', 'erotic-art' : 'Erotic Art'
+        'anal-sex-stories': 'Anal',
+        'audio-sex-stories': 'Audio', 
+        'bdsm-stories': 'BDSM',
+        'celebrity-stories': 'Celebrities & Fan Fiction', 
+        'chain-stories': 'Chain Stories',
+        'erotic-couplings': 'Erotic Couplings', 
+        'erotic-horror': 'Erotic Horror',
+        'exhibitionist-voyeur': 'Exhibitionist & Voyeur', 
+        'fetish-stories': 'Fetish',
+        'first-time-sex-stories': 'First Time', 
+        'gay-sex-stories': 'Gay Male',
+        'group-sex-stories': 'Group Sex', 
+        'adult-how-to': 'How To',
+        'adult-humor': 'Humor & Satire', 
+        'illustrated-erotic-fiction': 'Illustrated',
+        'taboo-sex-stories': 'Incest/Taboo', 
+        'interracial-erotic-stories': 'Interracial Love',
+        'lesbian-sex-stories': 'Lesbian Sex', 
+        'erotic-letters': 'Letters & Transcripts',
+        'loving-wives': 'Loving Wives', 
+        'mature-sex': 'Mature', 
+        'mind-control': 'Mind Control',
+        'non-english-stories': 'Non-English', 
+        'non-erotic-stories': 'Non-Erotic',
+        'non-consent-stories': 'NonConsent/Reluctance', 
+        'non-human-stories': 'NonHuman',
+        'erotic-novels': 'Novels and Novellas', 
+        'reviews-and-essays': 'Reviews & Essays',
+        'adult-romance': 'Romance', 
+        'science-fiction-fantasy': 'Sci-Fi & Fantasy',
+        'masturbation-stories': 'Toys & Masturbation',
+        'transgender': 'Transgender & Crossdressers',
+        'erotic-poetry': 'Erotic Poetry', 
+        'illustrated-poetry': 'Illustrated Poetry',
+        'non-erotic-poetry': 'Non-Erotic Poetry', 
+        'erotic-audio-poetry': 'Poetry With Audio',
+        'adult-comics': 'Adult Comics', 
+        'erotic-art': 'Erotic Art',
         }
 
     return categories[category] if category in categories else category
@@ -940,8 +969,18 @@ def getKind(url):
 
 def getMonth(month):
     month_dict = {
-    'January' : '01','February' : '02','March' : '03','April' : '04','May' : '05','June' : '06',
-    'July' : '07','August' : '08','September' : '09','October' : '10','November' : '11','December' : '12'
+    'January': '01',
+    'February': '02',
+    'March': '03',
+    'April': '04',
+    'May': '05',
+    'June': '06',
+    'July': '07',
+    'August': '08',
+    'September': '09',
+    'October': '10',
+    'November': '11',
+    'December': '12',
     }
 
     return month_dict[month]
@@ -1118,6 +1157,10 @@ def saveFile(fileUrl, fileName, savePath, attempts=0):
                 print('Trying a different URL of the same file...')
                 fileUrl = fileUrl.replace('//english.','//www.')
                 return saveFile(fileUrl, fileName, savePath, attempts)
+            print('Skipping this file...')
+            pass
+        if e.code == 403:
+            print('Forbidden URL.')
             print('Skipping this file...')
             pass
         if e.code == 503:

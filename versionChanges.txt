@@ -1,3 +1,10 @@
+1.9.5 - February 2026
+'''''''''''''''''''''
+- catch HTTP Error 403 and 429
+- catch URL Error -2
+- reformat code for consistent style
+- update incorrect category names
+
 1.9.4 - September 2025
 ''''''''''''''''''''''
 - redirect URLs to first page of story (if deeper page is submitted)
@@ -15,7 +22,7 @@
 1.9.1 - Jan 2025
 ''''''''''''''''
 - update a few comments
-- catch HTTPError 405
+- catch HTTP Error 405
 - fix bug caused by submissions with ratings disabled
 
 1.9 - Jan 2025
