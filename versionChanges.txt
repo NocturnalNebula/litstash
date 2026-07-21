@@ -1,3 +1,7 @@
+1.9.6 - July 2026
+'''''''''''''''''
+- fix audio downloads after literotica site update broke them
+
 1.9.5 - February 2026
 '''''''''''''''''''''
 - catch HTTP Error 403 and 429
