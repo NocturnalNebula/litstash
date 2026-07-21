@@ -40,8 +40,8 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.5'
-updated = 'Updated: February 2026'
+version = 'Litstash 1.9.6'
+updated = 'Updated: July 2026'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -1233,14 +1233,14 @@ def saveFile(fileUrl, fileName, savePath, attempts=0):
 
 def getAudio(pageText, pageSource, title, username):
     # retrieve audio files from page text, or from embedded player (modern scheme)
-
+    
     audioTypes = ['mp3','ogg','wav','aiff','m4a','flac', 'ram']
 
     if o == 0: savePath = os.path.join(getPath(username), 'audios')
     else: savePath = os.path.join(origCwd, 'litstash-saves', 'audios')
 
     urlCount = pageText.count('<a href="')
-    audioCount = pageSource.count('<audio src="')
+    audioCount = pageSource.count('<audio controls src="')
     audioUrls = []
     searchStart = 0
     savedCount = 0
@@ -1290,7 +1290,7 @@ def getAudio(pageText, pageSource, title, username):
 
     for i in range(audioCount):
 
-        audioUrl = sandwichMaker(pageSource,'<audio src="','"', searchStart)
+        audioUrl = sandwichMaker(pageSource,'<audio controls src="','"', searchStart)
         audioName = audioUrl.split('/')[-1]
         pageText = pageText + f'\n<br><br><a href="audios/{audioName}">{title}</a>'
         searchStart = pageSource.find(audioName)
