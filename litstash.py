@@ -40,8 +40,8 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.6'
-updated = 'Updated: July 2026'
+version = 'Litstash 1.9.7'
+updated = 'Updated: August 2026'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -60,6 +60,7 @@ options:
     -v, --version    print version number
     -a, --all        automatically download all detected submissions
     -o, --one-file   export all selected submissions in one html file
+    -n, --no-images  ignore images
     -s, --series     export series as one html file
     -u, --update     download latest python script (not binary)
 
@@ -239,7 +240,7 @@ class literotica:
         self.filename = getFilename(self.date,self.title)
 
     def export(self):
-        if s == 1: export(self.path, self.filename, self.output, '-'.join(self.series.split(' ')) + '.html')
+        if s == 1: export(self.path, self.filename, self.output, cleanCharacters('-'.join(self.series.split(' '))) + '.html')
         else: export(self.path, self.filename, self.output)
 
 class waybackMachineLit:
@@ -689,7 +690,7 @@ def checkForDouble(username, date, title):
     else:
         return 0
 
-def sandwichMaker(textSource, topBread, bottomBread, start=0, reverse=0):
+def sandwichMaker(textSource, topBread, bottomBread, start=0, reverse=0, includeBread=0):
     # return part of a string between two known substrings (the 'filling' of a sandwich)
     # returns -1 if cannot find substring
 
@@ -700,7 +701,8 @@ def sandwichMaker(textSource, topBread, bottomBread, start=0, reverse=0):
     if begin == (-1 + len(topBread)): return -1
     end = textSource.find(bottomBread, begin)
     filling = textSource[begin:end]
-    return filling
+    if not includeBread: return filling
+    else: return topBread+filling+bottomBread
 
 def cleanTitle(url):
     # convert the submission url into a temp title to display while downloading
@@ -1112,16 +1114,19 @@ def getOutput(obj):
 
     return cleanHexCodes(output)
 
+def cleanCharacters(text):
+    # remove puncuation marks from text string
+    text = text.replace('---','-').replace('--','-').replace(',','').replace('!','').replace('?','')
+    text = text.replace(':','').replace(';','').replace("'",'').replace('"','').replace('|','')
+    text = text.replace('[','').replace(']','').replace("<",'').replace('>','').replace('*','')
+    text = text.replace('/','-').replace('\\','-').replace('.','').replace(' ','-')
+    
+    return text
+    
 def getFilename(date, title):
     # prepare filename of export (include date for sorting, no spaces and minimal puncuation)
 
-    title = title.replace('.','').replace(' ','-')
-    # remove puncuation marks from title
-    title = title.replace('---','-').replace('--','-').replace(',','').replace('!','').replace('?','')
-    title = title.replace(':','').replace(';','').replace("'",'').replace('"','').replace('|','')
-    title = title.replace('[','').replace(']','').replace("<",'').replace('>','').replace('*','')
-    title = title.replace('/','-').replace('\\','-')
-    return f"{date}_{title}.html"
+    return f"{date}_{cleanCharacters(title)}.html"
 
 def saveFile(fileUrl, fileName, savePath, attempts=0):
     # download a resource (image or audio file), sort errors, retry with adjusted URLs
@@ -1317,7 +1322,17 @@ def getImages(text, username):
     # retrieve images from within final text
 
     imageCount = text.count('<img src="')
-    if imageCount == 0: return text
+    if imageCount == 0: return text # do nothing if there are no images
+    elif n == 1: 
+        # remove image tags from text body if --no-images flag
+                
+        for i in range(imageCount):
+            imageTag = sandwichMaker(text,'<img','>', includeBread=1)
+            if imageTag == -1: return text
+            text = text.replace(imageTag,'') # remove image tag
+
+        return text
+        
     else: print(f"[Detected]    {imageCount} image(s) to download")
 
     searchStart = 0
@@ -1688,9 +1703,11 @@ def parseArgs(args):
     global a
     global o
     global s
+    global n
     a = 0
     o = 0
     s = 0
+    n = 0
     seriesDetected = 0
     nonSeriesDetected = 0
 
@@ -1704,6 +1721,7 @@ def parseArgs(args):
         elif arg == '-a' or arg == '--all': a = 1 # flag to download all
         elif arg == '-o' or arg == '--one-file': o = 1 # flag to export as one file
         elif arg == '-s' or arg == '--series': s = 1 # flag to mark series export as one file
+        elif arg == '-n' or arg == '--no-images': n = 1 # flag to ignore images
         elif arg == '-v' or arg == '--version': # output version info and quit
             print(version)
             print(updated)
