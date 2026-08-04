@@ -74,6 +74,7 @@ options:
     -v, --version    print version number
     -a, --all        automatically download all detected submissions
     -o, --one-file   export all selected submissions in one html file
+    -n, --no-images  ignore images
     -s, --series     export series as one html file
     -u, --update     download latest python script (not binary)
 
