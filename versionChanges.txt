@@ -1,3 +1,8 @@
+1.9.7 - August 2026
+'''''''''''''''''''
+- fix bug created by special characters in titles with series tag
+- add --no-images flag to avoid saving images
+
 1.9.6 - July 2026
 '''''''''''''''''
 - fix audio downloads after literotica site update broke them
