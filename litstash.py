@@ -94,6 +94,10 @@ contact:
     - email: nocturnalnebula@proton.me
 '''
 
+opener = urllib.request.build_opener()
+opener.addheaders = [("User-Agent", ' ')]
+urllib.request.install_opener(opener)
+
 # CLASSES
 
 class literotica:
