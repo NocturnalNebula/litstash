@@ -1,3 +1,13 @@
+1.9.8 - November 2026
+'''''''''''''''''''''
+- prevent attempts to use series flag (-s) with Wayback Machine and print explanation
+- catch HTTP Error 500
+- create a header in urllib.request with a user-agent to prevent request blocks
+- create -A or --no-audio flag to avoid saving audio
+- change -n to -I or --no-images to avoid saving images
+- add author's userID number to metadata of outputs
+- various minor edits of variable and function names
+
 1.9.7 - August 2026
 '''''''''''''''''''
 - fix bug created by special characters in titles with series tag

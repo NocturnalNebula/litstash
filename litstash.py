@@ -21,8 +21,6 @@
 
 #    < --- PROGRAM BEGINS BELOW --- >
 
-# This is a long script and is best read in an IDE with all functions collapsed/folded.
-
 # import modules (all from standard library)
 import urllib.request
 import urllib.error
@@ -40,8 +38,8 @@ context = None
 downloadList = []
 oneOutput = ''
 currentSeries = ''
-version = 'Litstash 1.9.7'
-updated = 'Updated: August 2026'
+version = 'Litstash 1.9.8'
+updated = 'Updated: November 2026'
 usage = '''
 litstash is a story downloader with support for the sites Literotica and xnxx,
 including Wayback Machine captures of either site
@@ -60,7 +58,8 @@ options:
     -v, --version    print version number
     -a, --all        automatically download all detected submissions
     -o, --one-file   export all selected submissions in one html file
-    -n, --no-images  ignore images
+    -I, --no-images  ignore images
+    -A, --no-audio   ignore audio
     -s, --series     export series as one html file
     -u, --update     download latest python script (not binary)
 
@@ -94,6 +93,7 @@ contact:
     - email: nocturnalnebula@proton.me
 '''
 
+# create header for urllib requests (user-agent is required)
 opener = urllib.request.build_opener()
 opener.addheaders = [("User-Agent", ' ')]
 urllib.request.install_opener(opener)
@@ -114,6 +114,7 @@ class literotica:
         # submission metadata
         self.title = ''
         self.username = ''
+        self.userID = ''
         self.series = ''
         self.date = ''
         self.description = ''
@@ -179,6 +180,7 @@ class literotica:
                 self.title = str(self.apiData['submission']['title']).replace('/','-')
 
                 self.username = str(self.apiData['submission']['authorname'])
+                self.userID = str(self.apiData['submission']['author']['userid'])
 
                 # check if submission  is already saved
                 if checkForDouble(self.username, self.date, self.title): self.skip = 1; return
@@ -212,7 +214,7 @@ class literotica:
                 # get page source to gather pageText, send it into getImages
                 url = self.url + '?page=' + str(self.currentPage)
                 self.pageSource = getSource(url)
-                pageText = cleanIllustrationSource(self)
+                pageText = cleanSource(self)
             elif self.apiData['pageText'] is not None:
                 pageText = self.apiData['pageText']
                 pageText = pageText.replace('\r\n\r\n','</p>\n<p>')
@@ -233,7 +235,7 @@ class literotica:
 
         self.wordCount = wordCount(self.text)
 
-        # scan finished master text string for <img> tags and to download any images (for illustrated stories)
+        # scan finished master text string for <img> tags and download any images (for illustrated stories)
         self.text = getImages(self.text, self.username)
 
     def build(self):
@@ -262,6 +264,7 @@ class waybackMachineLit:
         self.scheme = '' # Modern / Classic / Pre-Classic / Original
         self.title = ''
         self.username = ''
+        self.userID = ''
         self.series = ''
         self.date = '0000-00-00'
         self.description = ''
@@ -565,7 +568,7 @@ class waybackMachineLit:
 
             # process page text for illustration categories
             if self.category == 'Adult Comics' or self.category == 'Erotic Art':
-                self.pageText = cleanIllustrationSource(self)
+                self.pageText = cleanSource(self)
 
             self.text += self.pageText
 
@@ -600,6 +603,7 @@ class xnxx:
         # submission metadata
         self.title = ''
         self.username = ''
+        self.userID = ''
         self.series = ''
         self.date = ''
         self.description = ''
@@ -751,7 +755,7 @@ def getSource(url, attempts=0):
         print('Too many attempts. Try again later.')
         return 'skip'
     try:
-        return urllib.request.urlopen(url,context=context).read().decode('utf-8', 'ignore')
+        return urllib.request.urlopen(url, context=context).read().decode('utf-8', 'ignore')
 
     # catch any error and disply some reasons, then either return or retry
     except urllib.error.HTTPError as e:
@@ -788,6 +792,11 @@ def getSource(url, attempts=0):
             attempts += 1
             return getSource(url, attempts)
         if e.code == 429:
+            print('Retrying in 5 seconds...')
+            time.sleep(5)
+            attempts += 1
+            return getSource(url, attempts)
+        if e.code == 500:
             print('Retrying in 5 seconds...')
             time.sleep(5)
             attempts += 1
@@ -863,8 +872,8 @@ def getSite(url):
         if 'sexstories.com' in url: return 'xnxx'
     return 'unknown'
 
-def cleanIllustrationSource(obj):
-    # remove unimportant html tags from page source of illustrations
+def cleanSource(obj):
+    # remove unimportant html tags from page source
 
     # need to extract pageText iff obj is from literotica (not wayback machine)
     if not 'web.archive.org' in obj.url:
@@ -1086,6 +1095,7 @@ def getOutput(obj):
         f'<title>{obj.series if s == 1 else "Lit Collection" if o == 1 else obj.title}</title>\n\n'
         f'<meta name="title" content="{"Lit Collection" if o == 1 else obj.series if s == 1 else obj.title}">\n'
         f'<meta name="author" content="{"Various Authors" if o == 1 else obj.username}">\n'
+        f'<meta name="userID" content="{"" if o == 1 else obj.userID}">\n'
         f'<meta name="tags" content="{"" if o == 1 else "" if s == 1 else obj.category}">\n'
         f'<meta name="keywords" content="{"" if o == 1 else "" if s == 1 else obj.tags}">\n'
         f'<meta name="series" content="{"" if o == 1 else obj.series}">\n'
@@ -1150,7 +1160,7 @@ def saveFile(fileUrl, fileName, savePath, attempts=0):
     os.chdir(savePath)
 
     try:
-        urllib.request.urlretrieve(fileUrl,fileName)
+        urllib.request.urlretrieve(fileUrl, fileName)
         success = 1 # success flag
 
     # create exceptions to catch any error and disply some reasons, then either return or retry
@@ -1245,8 +1255,8 @@ def getAudio(pageText, pageSource, title, username):
     
     audioTypes = ['mp3','ogg','wav','aiff','m4a','flac', 'ram']
 
-    if o == 0: savePath = os.path.join(getPath(username), 'audios')
-    else: savePath = os.path.join(origCwd, 'litstash-saves', 'audios')
+    if o == 0: savePath = os.path.join(getPath(username), 'audio')
+    else: savePath = os.path.join(origCwd, 'litstash-saves', 'audio')
 
     urlCount = pageText.count('<a href="')
     audioCount = pageSource.count('<audio controls src="')
@@ -1257,8 +1267,12 @@ def getAudio(pageText, pageSource, title, username):
 
     # search pageText for audio links (if linked within it rather than embedded below)
     if urlCount == 0: pass
+    elif A == 1:
+        for i in range(urlCount):
+            link = sandwichMaker(pageText, '<a href', '/a>', includeBread=1)
+            if link == -1: pass
+            pageText = pageText.replace(link, '[Audio Link Removed]')
     else:
-
         for i in range(urlCount):
             url = sandwichMaker(pageText,'a href="','"',searchStart)
             if url.split('.')[-1] in audioTypes: audioUrls.append(url)
@@ -1270,7 +1284,7 @@ def getAudio(pageText, pageSource, title, username):
             for audioUrl in audioUrls:
 
                 audioName = audioUrl.split('/')[-1]
-                pageText = pageText.replace(audioUrl,'audios/'+audioName)
+                pageText = pageText.replace(audioUrl,'audio/'+audioName)
 
                 audioUrl = cleanUrl(audioUrl)
 
@@ -1295,39 +1309,39 @@ def getAudio(pageText, pageSource, title, username):
 
     # search pageSource for audio (if embedded below pageText rather than linked within it)
     if audioCount == 0: pass
-    else: print(f"[Detected]    {audioCount} audio(s) to download")
+    elif not A: # only do this is A flag is not selected
+        print(f"[Detected]    {audioCount} audio(s) to download")
+        for i in range(audioCount):
 
-    for i in range(audioCount):
+            audioUrl = sandwichMaker(pageSource,'<audio controls src="','"', searchStart)
+            audioName = audioUrl.split('/')[-1]
+            pageText = pageText + f'\n<br><br><a href="audio/{audioName}">{title}</a>'
+            searchStart = pageSource.find(audioName)
 
-        audioUrl = sandwichMaker(pageSource,'<audio controls src="','"', searchStart)
-        audioName = audioUrl.split('/')[-1]
-        pageText = pageText + f'\n<br><br><a href="audios/{audioName}">{title}</a>'
-        searchStart = pageSource.find(audioName)
+            audioUrl = cleanUrl(audioUrl)
 
-        audioUrl = cleanUrl(audioUrl)
-
-        success = saveFile(audioUrl, audioName, savePath)
-        if success:
-            savedCount += 1
-            print(f"[Retrieved]   {savedCount} of {audioCount} audio(s)  ({skippedCount} Skipped)")
-        elif 'web.archive.org' in audioUrl:
-            print('Trying a different URL of the same file...')
-            audioUrl = audioUrl.replace('im_/','if_/')
-            success = saveFile(audioUrl, audioName, savePath,)
+            success = saveFile(audioUrl, audioName, savePath)
             if success:
                 savedCount += 1
-                print(f"[Retrieved]   {savedCount} of {len(audioUrls)} audio(s)  ({skippedCount} Skipped)")
+                print(f"[Retrieved]   {savedCount} of {audioCount} audio(s)  ({skippedCount} Skipped)")
+            elif 'web.archive.org' in audioUrl:
+                print('Trying a different URL of the same file...')
+                audioUrl = audioUrl.replace('im_/','if_/')
+                success = saveFile(audioUrl, audioName, savePath,)
+                if success:
+                    savedCount += 1
+                    print(f"[Retrieved]   {savedCount} of {len(audioUrls)} audio(s)  ({skippedCount} Skipped)")
+                else: skippedCount += 1
             else: skippedCount += 1
-        else: skippedCount += 1
 
     return pageText # return pageText with audio urls modified to be local
 
 def getImages(text, username):
     # retrieve images from within final text
 
-    imageCount = text.count('<img src="')
+    imageCount = text.count('<img src=')
     if imageCount == 0: return text # do nothing if there are no images
-    elif n == 1: 
+    elif I == 1: 
         # remove image tags from text body if --no-images flag
                 
         for i in range(imageCount):
@@ -1707,11 +1721,13 @@ def parseArgs(args):
     global a
     global o
     global s
-    global n
+    global I
+    global A
     a = 0
     o = 0
     s = 0
-    n = 0
+    I = 0
+    A = 0
     seriesDetected = 0
     nonSeriesDetected = 0
 
@@ -1725,7 +1741,8 @@ def parseArgs(args):
         elif arg == '-a' or arg == '--all': a = 1 # flag to download all
         elif arg == '-o' or arg == '--one-file': o = 1 # flag to export as one file
         elif arg == '-s' or arg == '--series': s = 1 # flag to mark series export as one file
-        elif arg == '-n' or arg == '--no-images': n = 1 # flag to ignore images
+        elif arg == '-I' or arg == '--no-images': I = 1 # flag to ignore images
+        elif arg == '-A' or arg == '--no-audio': A = 1 # flag to ignore audio
         elif arg == '-v' or arg == '--version': # output version info and quit
             print(version)
             print(updated)
@@ -1752,8 +1769,12 @@ def parseArgs(args):
             scanAuthorPage(arg)
             nonSeriesDetected = 1
         elif 'literotica.com/series/' in arg:
-            seriesDetected = 1
-            scanForUrls(arg)
+            if 'web.archive.org' not in arg:
+                seriesDetected = 1
+                scanForUrls(arg)
+            else:
+                nonSeriesDetected = 1
+                scanForUrls(arg)
         elif 'literotica.com/stories/showstory.php' in arg:
             if 'web.archive.org' not in arg:
                 print('Use modern Literotica URL format.')
@@ -1769,18 +1790,19 @@ def parseArgs(args):
 
     if s == 1:
         if o == 1:
-            print('Do not use --series and --one-file tags together.')
+            print('Do not use --series and --one-file flags together.')
             print('Quitting...')
             raise SystemExit
         else:
-            if seriesDetected == 0:
-                print('No series page detected. Use --series tag with a series URL.')
-                print('Quitting...')
-                raise SystemExit
             if nonSeriesDetected == 1:
-                print('Only use --series tag with series URLs.')
+                print('Only use --series flag with a Literotica series URL. (Does not work with Wayback Machine.)')
+                print('Quitting...')
+                raise SystemExit           
+            if seriesDetected == 0:
+                print('No series page detected. Use --series tag with a series URL. ')
                 print('Quitting...')
                 raise SystemExit
+
 
     # send downloadList to be parsed and downloaded
     getList()
